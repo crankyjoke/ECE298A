@@ -17,7 +17,8 @@ module tt_um_example (
 );
 
     reg [7:0] counter;
-
+    // ui_in[0] controls load
+    // ui_in[1] controls high Z
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n)
             counter <= 8'b0;
