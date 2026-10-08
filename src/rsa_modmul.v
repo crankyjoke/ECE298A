@@ -40,17 +40,25 @@ module rsa_modmul (
             endcase
         end
     end
+    // The bit counter is control state. Reset it to avoid X feedback
+    // in the synthesized increment/decrement and enable logic.
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) bit_index <= 0;
+        else if (ena) begin
+            if (state == IDLE && start) bit_index <= 5'd27;
+            else if (state == NEXT_BIT && bit_index != 0)
+                bit_index <= bit_index - 5'd1;
+        end
+    end
     // Data registers are initialized before use; no reset cells needed.
     always @(posedge clk) begin
         if (rst_n && ena) begin
             case (state)
                 IDLE: if (start) begin
                     accumulator <= 0;
-                    bit_index <= 5'd27;
                 end
                 DOUBLE, ADD: accumulator <= alu_value;
                 REDUCE_DOUBLE, REDUCE_ADD: accumulator <= {1'b0, reduced};
-                NEXT_BIT: if (bit_index != 0) bit_index <= bit_index - 5'd1;
                 default: begin end
             endcase
         end
