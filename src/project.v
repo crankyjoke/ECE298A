@@ -1,8 +1,3 @@
-/*
- * Copyright (c) 2024 Your Name
- * SPDX-License-Identifier: Apache-2.0
- */
-
 `default_nettype none
 
 module tt_um_example (
@@ -16,21 +11,55 @@ module tt_um_example (
     input  wire       rst_n
 );
 
-    reg [7:0] counter;
-    // ui_in[0] controls load
-    // ui_in[1] controls high Z
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n)
-            counter <= 8'b0;
-        else if (ui_in[0])
-            counter <= uio_in;
-        else
-            counter <= counter + 8'd1;
-    end
+    wire [27:0] modulus;
+    wire [27:0] result;
 
-    assign uo_out  = 8'b0;
-    assign uio_out = counter;
-    assign uio_oe  = {8{ui_in[1]}};
+    wire [13:0] exponent;
+    wire [13:0] message;
+    wire [13:0] page;
+
+    wire start;
+    wire done;
+    wire page_select;
+
+    rsa_loader loader (
+        .clk(clk),
+        .rst_n(rst_n),
+        .ena(ena),
+        .ui_in(ui_in),
+        .start_in(uio_in[7]),
+        .modulus(modulus),
+        .exponent(exponent),
+        .message(message),
+        .start(start),
+        .page_select(page_select)
+    );
+
+    rsa_modexp exponentiation (
+        .clk(clk),
+        .rst_n(rst_n),
+        .ena(ena),
+        .start(start),
+        .modulus(modulus),
+        .exponent(exponent),
+        .message(message),
+        .result(result),
+        .done(done)
+    );
+
+
+    assign page = page_select ? result[27:14] : result[13:0];
+
+
+    assign uo_out = done ? page[7:0] : 8'b0;
+    assign uio_out[5:0] = done ? page[13:8] : 6'b0;
+
+    assign uio_out[6] = done;
+    assign uio_out[7] = 1'b0;
+
+
+    assign uio_oe = 8'b01111111;
+
 endmodule
 
-  `default_nettype wire
+`default_nettype wire
