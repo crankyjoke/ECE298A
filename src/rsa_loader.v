@@ -9,7 +9,7 @@ module rsa_loader (
     output wire load,
     output wire start, page_select
 );
-    // Hold bundled data stable before and throughout each LOAD pulse.
+
     (* async_reg = "true" *) reg [6:0] data_meta, data_sync;
     (* async_reg = "true" *) reg load_meta, load_sync;
     (* async_reg = "true" *) reg start_meta, start_sync;
@@ -51,7 +51,7 @@ module rsa_loader (
             end
         end
     end
-    // All chunks are overwritten before computation, so no data reset.
+
     always @(posedge clk) begin
         if (rst_n && capture) begin
             case (load_count)

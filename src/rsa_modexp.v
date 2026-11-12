@@ -17,7 +17,7 @@ module rsa_modexp (
     wire [27:0] mul_result;
     wire mul_done;
     wire mul_start = (state == START_PRODUCT) || (state == START_SQUARE);
-    // Operand selection must persist throughout the multiplication.
+
     wire square = (state == START_SQUARE) || (state == WAIT_SQUARE);
     wire [27:0] mul_a = square ? base : result;
     rsa_modmul multiplier (
