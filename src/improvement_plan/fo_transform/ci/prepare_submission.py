@@ -66,19 +66,19 @@ def main():
     (workspace / "docs" / "info.md").write_text(
         "# Educational RSA Fujisaki-Okamoto experiment\n\n"
         "## How it works\n\n"
-        "The 42-bit RSA core implements hybrid FO encryption and decrypt/re-encrypt verification. "
+        "The 28-bit RSA core implements hybrid FO encryption and decrypt/re-encrypt verification. "
         "SHA-256 is supplied by a trusted STM32 through the hash-service GPIO protocol. "
         "This uses a toy randomized RSA encoding and shortened hashes; no production security claim is made.\n\n"
         "## How to test\n\n"
         "Run src/improvement_plan/fo_transform/test/run_fo_tests.py. "
-        "The GPIO protocol, 29-load packet, twelve-bit result words, and hash-service procedure "
+        "The GPIO protocol, 19-load packet, twelve-bit result words, and hash-service procedure "
         "are specified in src/improvement_plan/fo_transform/README.md. "
         "REJECTED is uio[4], HASH_REQUEST is uio[5], DONE is uio[6], and CONTROL is uio[7].\n\n"
         "## External hardware\n\n"
         "A trusted STM32 supplies the clock, reset, key/input packets, and SHA-256 service.\n",
         encoding="utf-8",
     )
-    print(f"Selected tt_um_rsa_fo, trusted external hashing, {args.tiles}, 10 MHz target")
+    print(f"Selected 28-bit tt_um_rsa_fo, trusted external hashing, {args.tiles}, 10 MHz target")
 
 
 if __name__ == "__main__":

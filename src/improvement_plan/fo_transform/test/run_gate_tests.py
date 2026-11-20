@@ -22,7 +22,7 @@ def main():
         return
     (work / ".build").mkdir(exist_ok=True)
     (work / "output").mkdir(exist_ok=True)
-    vectors = argparse.Namespace(width=42, seed_bits=14, coin_bits=14, message_bits=14, random_cases=0)
+    vectors = argparse.Namespace(width=28, seed_bits=7, coin_bits=7, message_bits=7, random_cases=0)
     rows, hashes, sha = test_vectors(vectors)
     for name, data in (("fo_vectors.txt", rows), ("fo_hashes.txt", hashes), ("sha_vectors.txt", sha)):
         (work / name).write_text("".join(" ".join(f"{value:x}" for value in row) + "\n" for row in data))
@@ -37,6 +37,7 @@ def main():
         commands = [
             ["iverilog", "-g2012", "-s", "tb_fo", "-DGL_TEST", "-DFUNCTIONAL",
              "-DUSE_POWER_PINS", "-DSIM", "-DUNIT_DELAY=#1", "-Ptb_fo.EXTERNAL_HASH=1",
+             "-Ptb_fo.WIDTH=28", "-Ptb_fo.SEED_BITS=7", "-Ptb_fo.COIN_BITS=7", "-Ptb_fo.MESSAGE_BITS=7",
              "-o", ".build/gate.vvp", str(lib / "primitives.v"),
              str(lib / "gf180mcu_fd_sc_mcu7t5v0.v"), "gate_level_netlist.v", str(ROOT / "test/tb_fo.sv")],
             ["vvp", ".build/gate.vvp"],

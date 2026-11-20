@@ -3,8 +3,8 @@
 // GPIO top for the experimental hybrid FO profile. See this folder's README.
 // Default offloads SHA-256 to a trusted STM32; EXTERNAL_HASH=0 includes SHA RTL.
 module tt_um_rsa_fo #(
-    parameter integer WIDTH=42, WORD_BITS=7,
-    parameter integer SEED_BITS=14, COIN_BITS=14, MESSAGE_BITS=14,
+    parameter integer WIDTH=28, WORD_BITS=7,
+    parameter integer SEED_BITS=7, COIN_BITS=7, MESSAGE_BITS=7,
     parameter integer EXTERNAL_HASH=1
 ) (
     input wire [7:0] ui_in,

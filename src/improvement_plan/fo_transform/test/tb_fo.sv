@@ -1,7 +1,7 @@
 `default_nettype none
 `timescale 1ns/1ps
 module tb_fo;
-    parameter integer WIDTH=42,SEED_BITS=14,COIN_BITS=14,MESSAGE_BITS=14,EXTERNAL_HASH=0;
+    parameter integer WIDTH=28,SEED_BITS=7,COIN_BITS=7,MESSAGE_BITS=7,EXTERNAL_HASH=0;
     localparam integer HASH_BITS=(MESSAGE_BITS>COIN_BITS)?MESSAGE_BITS:COIN_BITS;
     localparam integer REQUEST_BITS=1+SEED_BITS+MESSAGE_BITS;
     localparam integer REQUEST_PAGES=(REQUEST_BITS+11)/12;

@@ -9,7 +9,7 @@ the original RSA tops and root Tiny Tapeout submission manifest are unchanged.
 **This is an educational profile, not a standardized or proven-secure RSA-FO
 scheme.** In particular its randomized RSA representative encoding is a test
 backend, not a proven probabilistic RSA encryption scheme. The default RSA
-modulus is only 42 bits, and seeds/coins/masks are only 14 bits. Implementing
+modulus is only 28 bits, and seeds/coins/masks are only 7 bits. Implementing
 the FO control flow does not confer a CCA-security claim on these parameters
 or on this encoding. The existing RSA engine also has data-dependent timing;
 constant-time execution and complete key-register zeroization are not provided.
@@ -24,7 +24,7 @@ repository's explicit demonstration choices.
 
 ## Exact profile
 
-Default parameters: WIDTH=42, SEED_BITS=14, COIN_BITS=14, MESSAGE_BITS=14.
+Default parameters: WIDTH=28, SEED_BITS=7, COIN_BITS=7, MESSAGE_BITS=7.
 Let `BE(x,b)` encode x in `ceil(b/8)` big-endian bytes with unused high bits zero.
 Let `low_b` select the least-significant b bits of the SHA-256 digest integer.
 
@@ -109,14 +109,14 @@ clocks. Send the following packet, then pulse CONTROL to start:
 | Field | Default seven-bit chunks | Encoding |
 | --- | --- | --- |
 | Command | 1 | 0=encrypt, 1=decrypt; other values reject |
-| N | 6 | Least-significant chunk first |
-| e | 6 | Least-significant chunk first |
-| d | 6 | Use zero for encryption |
-| c1 | 6 | Use zero for encryption |
-| sigma | 2 | Fresh random seed for encryption; zero for decryption |
-| Payload | 2 | m for encryption, c2 for decryption |
+| N | 4 | Least-significant chunk first |
+| e | 4 | Least-significant chunk first |
+| d | 4 | Use zero for encryption |
+| c1 | 4 | Use zero for encryption |
+| sigma | 1 | Fresh random seed for encryption; zero for decryption |
+| Payload | 1 | m for encryption, c2 for decryption |
 
-The default frame has **29 LOAD pulses**. In general it has
+The default frame has **19 LOAD pulses**. In general it has
 `1+4*(WIDTH/7)+ceil(SEED_BITS/7)+ceil(MESSAGE_BITS/7)` pulses.
 The host must zero padding bits in the final seed/payload chunks.
 START before a full packet, and extra LOADs after a full packet but before
@@ -134,7 +134,7 @@ Read words as `word=((uio_out & 0x0F)<<8)|uo_out`. The first word is already
 selected; pulse CONTROL between words. Extra CONTROL pulses clamp at the
 last word. Data is least-significant-word first.
 
-The result has `ceil((WIDTH+MESSAGE_BITS)/12)` words: **five by default**.
+The result has `ceil((WIDTH+MESSAGE_BITS)/12)` words: **three by default**.
 For encryption, reconstruct `packed=c1|(c2<<WIDTH)`. For decryption, packed
 is the plaintext m on success. Unused high output bits are zero.
 DONE and its decision remain held. The first LOAD of the next packet clears
@@ -143,7 +143,7 @@ is no input FIFO. Reset aborts loading, computation, and pending hashes.
 
 ### Servicing a hash request on STM32
 
-Read `ceil((1+SEED_BITS+MESSAGE_BITS)/12)` words: **three by default**.
+Read `ceil((1+SEED_BITS+MESSAGE_BITS)/12)` words: **two by default**.
 Reconstruct:
 
 ```text
@@ -154,7 +154,7 @@ request = sigma | (message << SEED_BITS)
 `kind=0` selects G and message is zero. `kind=1` selects H.
 Compute the corresponding SHA-256 using the exact domain/byte encoding above,
 and return its low `max(MESSAGE_BITS,COIN_BITS)` bits using LOAD pulses with
-seven-bit chunks, least-significant first: **two LOAD pulses by default**.
+seven-bit chunks, least-significant first: **one LOAD pulse by default**.
 No separate CONTROL acknowledgement is needed for a hash response. The request
 is consumed automatically. Poll status again; the next request can follow
 quickly, so do not rely on observing a falling edge of HASH_REQUEST.
@@ -205,7 +205,7 @@ The test files are simulation-only. Vectors, logs, snapshots, and result JSON
 go under the parent's ignored `.build/` directory. Do not add testbench or
 Python files to Design Sources. `test/check_synthesis.tcl` optionally checks
 both Arty hash configurations and produces FPGA resource reports under
-`.build/fo_synthesis/`. It does not establish Tiny Tapeout area/timing.
+`.build/fo_synthesis_w28/`. It does not establish Tiny Tapeout area/timing.
 
 To select the Tiny Tapeout design later, set the manifest top to
 `tt_um_rsa_fo`, list the three parent RSA arithmetic files plus the five FO
@@ -219,13 +219,17 @@ See `VALIDATION.md` for the completed simulation and synthesis checks.
 
 The separate **FO hardware** workflow tests 28-, 42-, and 56-bit configurations
 with Icarus and both hash modes. After those pass, it attempts a GF180 physical
-build of the default 42-bit external-hash top. This build selects the FO source
+build of the default 28-bit external-hash top in a 1x1 tile. This build selects the FO source
 list and pin map only in the runner workspace; the committed root info.yaml
 continues to select the original RSA core. Precheck and a dedicated FO GPIO
 gate-level regression follow a successful physical build.
 
-Push-triggered physical builds use 1x1 tiles. A manual workflow run can select
-1x2 or 2x2 for an explicitly larger experiment. A successful RTL test does not
-establish physical fit. Build logs and the generated FO manifest are uploaded
-even when hardening fails. The standalone gate-level regression uses a slow
-functional clock and the generated netlist; it does not replace timing signoff.
+The initial 42-bit, 14-bit-field physical attempt failed placement with 162.397%
+utilization in 1x1. The default has therefore been reduced to 28-bit RSA and
+7-bit seed/coin/message fields, retaining the 1x1 target. A manual workflow run
+can select a larger tile for separate experiments. The original submission's
+root manifest remains unchanged.
+A successful RTL test does not establish physical fit. Build logs and the
+generated FO manifest are uploaded even when hardening fails. The standalone
+gate-level regression uses a slow functional clock and the generated netlist;
+it does not replace timing signoff.

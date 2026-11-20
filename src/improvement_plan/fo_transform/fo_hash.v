@@ -3,7 +3,7 @@
 // Hash service shared by G and H. All request/response transfers require ena.
 // External mode delegates only hashing, not the FO acceptance decision.
 module rsa_fo_hash #(
-    parameter integer SEED_BITS=14, MESSAGE_BITS=14, VALUE_BITS=14,
+    parameter integer SEED_BITS=7, MESSAGE_BITS=7, VALUE_BITS=7,
     parameter integer EXTERNAL_HASH=0
 ) (
     input wire clk, rst_n, ena,

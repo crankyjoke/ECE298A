@@ -43,6 +43,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: fo-rtl-${{ matrix.width }}
+          include-hidden-files: true
           path: |
             src/improvement_plan/.build/fo_*/commands.log
             src/improvement_plan/.build/fo_*/summary.json
@@ -61,9 +62,11 @@ jobs:
         with:
           python-version: '3.11'
       - name: Select FO in this build workspace
+        env:
+          FO_TILES: ${{ inputs.tiles || '1x1' }}
         run: >-
           python src/improvement_plan/fo_transform/ci/prepare_submission.py
-          --workspace "$GITHUB_WORKSPACE" --tiles "${{ inputs.tiles || '1x1' }}"
+          --workspace "$GITHUB_WORKSPACE" --tiles "$FO_TILES"
       - name: Build FO GDS
         uses: TinyTapeout/tt-gds-action@ttgf26a
         with:

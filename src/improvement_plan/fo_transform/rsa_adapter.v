@@ -3,7 +3,7 @@
 // Converts a parallel FO request into the existing seven-bit exponent loader.
 // Request operands and modulus must stay stable until response consumption.
 module rsa_fo_adapter #(
-    parameter integer WIDTH=42, WORD_BITS=7
+    parameter integer WIDTH=28, WORD_BITS=7
 ) (
     input wire clk, rst_n, ena,
     input wire request_valid,

@@ -16,6 +16,11 @@ security proof, cryptographic certification, GF180 physical flow, or board test.
 | 56 | 14 / 14 / 14 | Trusted external SHA-256 | 34 | 17 | 10 |
 | **Total** | | | **246** | **116** | **60** |
 
+After reducing the default to 28/7/7/7, the default command was rerun in both
+hash modes: **110 additional FO cases**, including 48 rejected cases, and
+20 SHA checks passed. The default packet now has 19 loads, three result words,
+two hash-request words, and one hash-response load.
+
 FO expected answers were generated independently using Python arbitrary-precision
 modular exponentiation and hashlib SHA-256. The Verilog testbench drove the
 actual seven-bit GPIO packet input, polled status, supplied delayed external
@@ -39,7 +44,8 @@ Commands are listed in README.md. The additional parameter runs used:
 
 ```text
 --width 28 --seed-bits 7 --coin-bits 7 --message-bits 7 --random-cases 5
---width 56 --random-cases 5
+--width 42 --seed-bits 14 --coin-bits 14 --message-bits 14 --random-cases 12
+--width 56 --seed-bits 14 --coin-bits 14 --message-bits 14 --random-cases 5
 ```
 
 Logs/vectors/summary JSON are under the parent's ignored `.build/` directory,
@@ -64,8 +70,34 @@ synthesis eligibility.
 Reports are `.build/fo_synthesis/hash_external_1.rpt` and
 `hash_external_0.rpt`, relative to the parent improvement_plan directory.
 These are FPGA resource counts, **not estimates of GF180 ASIC area**.
-No placement/routing, timing signoff, bitstream programming, or physical I/O
-test was performed. Tiny Tapeout 1x1 fit is unestablished for both modes.
+The reduced 28/7/7/7 Arty configurations also synthesized successfully, with
+zero inferred latches: external hashing uses **401 LUTs / 349 flip-flops**,
+and on-chip hashing uses **919 LUTs / 868 flip-flops**. Those reports are in
+`.build/fo_synthesis_w28/`.
+The local Vivado checks did not perform GF180 placement/routing, timing signoff,
+bitstream programming, or physical I/O testing. GitHub GF180 results are below.
 
 The original RSA RTL and active root info.yaml were left unchanged. The new
 top requires the new FO GPIO protocol and an updated STM32 driver.
+
+## GitHub Actions and first GF180 attempt
+
+The [first dedicated FO run](https://github.com/crankyjoke/ECE298A/actions/runs/44658191898)
+passed all three Icarus jobs (28, 42, and 56 bits, with both hash modes).
+This independently repeats the 246 FO cases and 60 SHA-vector checks on Linux.
+
+The default 42-bit trusted-external-hash design synthesized to GF180 cells,
+but its **1x1** hardening attempt failed global placement with `GPL-0301`:
+OpenROAD reported **162.397% utilization**, exceeding the available area.
+The logged movable cell area was 73,277.971 square micrometres against a core
+area of 51,966.970 square micrometres, before further pin-density adjustment.
+This is an actual area failure; increasing a placement-density setting cannot
+make this configuration fit in one tile.
+
+The default FO configuration has been reduced to **28-bit RSA with 7-bit
+seed/coin/message fields**, and the dedicated workflow retains the **1x1**
+target. The 42- and 56-bit RTL configurations remain in its test matrix.
+This does not change the committed original RSA submission's manifest.
+The reduced configuration still needs a successful physical run to establish fit.
+For the current outcome,
+see the [FO hardware workflow](https://github.com/crankyjoke/ECE298A/actions/workflows/fo.yaml).

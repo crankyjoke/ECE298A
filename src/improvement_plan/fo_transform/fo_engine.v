@@ -3,8 +3,8 @@
 // Educational classical hybrid FO profile. See README for exact encoding,
 // truncation and security limits; this is not standardized RSA padding.
 module rsa_fo_engine #(
-    parameter integer WIDTH=42, WORD_BITS=7,
-    parameter integer SEED_BITS=14, COIN_BITS=14, MESSAGE_BITS=14,
+    parameter integer WIDTH=28, WORD_BITS=7,
+    parameter integer SEED_BITS=7, COIN_BITS=7, MESSAGE_BITS=7,
     parameter integer EXTERNAL_HASH=0,
     parameter integer HASH_BITS=(MESSAGE_BITS>COIN_BITS)?MESSAGE_BITS:COIN_BITS
 ) (
