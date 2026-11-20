@@ -43,8 +43,10 @@ runs the GF180 build, physical precheck, generated-netlist tests, and viewer
 publication using the root manifest. **FO hardware** is a manual workflow for
 broader width/hash experiments.
 
-The optimized FO design completed the dedicated 1x1 build at 76.468% placement
-utilization, with physical precheck and 21 gate-level cases passing. Nonfatal
+The [normal GDS build](https://github.com/crankyjoke/ECE298A/actions/runs/44759635661)
+now builds the FO design in 1x1 at 76.468% placement utilization, with physical
+precheck and 21 gate-level cases passing. Its
+[GDS viewer](https://crankyjoke.github.io/ECE298A/) is published by that workflow. Nonfatal
 maximum-slew warnings remain at some corners. See the full
 [validation record](src/improvement_plan/fo_transform/VALIDATION.md).
 

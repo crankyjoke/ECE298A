@@ -16,7 +16,12 @@ and `docs/legacy_rsa_proposal.md`.
 
 The earlier main GDS run displayed **56.400% placement utilization** because
 it selected the original RSA core; this was separate from the optimized FO
-build described below. The normal GDS workflow will verify the active selection.
+build described below. The
+[normal GDS run](https://github.com/crankyjoke/ECE298A/actions/runs/44759635661)
+now confirms `tt_um_rsa_fo`, **76.468% placement utilization**, and successful
+hardening, physical precheck, gate-level tests, and viewer deployment. The
+normal RTL and documentation workflows also passed. The published viewer is
+https://crankyjoke.github.io/ECE298A/.
 
 ## Current area-optimized encryption-only profile
 
