@@ -260,6 +260,10 @@ The [previous 28-bit external-hash 1x1 attempt](https://github.com/crankyjoke/EC
 also passed RTL tests but failed placement at **112.272% utilization**. The
 reduction saves area but still does not fit one tile; further architectural
 area reductions or a larger allocation are required.
+The [new on-chip compact-hash build](https://github.com/crankyjoke/ECE298A/actions/runs/44662246069)
+passed all RTL and exhaustive hash checks, but failed 1x1 placement at
+**125.772% utilization**. It includes the hash hardware that the earlier
+external-hash build offloaded, and still needs further total-area reduction.
 A successful RTL test does not establish physical fit. Build logs and the
 generated FO manifest are uploaded even when hardening fails. The standalone
 gate-level regression uses a slow functional clock and the generated netlist;

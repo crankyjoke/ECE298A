@@ -38,6 +38,16 @@ Reports are in `.build/fo_synthesis_hash7/`. These are FPGA resources;
 GF180 tile fit must be measured separately. The earlier 112.272% result
 below used external hashing, with no on-chip SHA engine to remove.
 
+The [compact-hash GitHub run](https://github.com/crankyjoke/ECE298A/actions/runs/44662246069)
+passed the exhaustive Icarus hash job and all four FO RTL jobs (28-bit tiny;
+28-, 42-, and 56-bit SHA-256, each with internal and external service modes).
+The 28-bit on-chip compact-hash 1x1 GF180 attempt synthesized successfully,
+then failed placement with `GPL-0301` at **125.772% utilization**. Initial
+instance area was 56,719.578 square micrometres; adjusted movable area was
+63,438.186 square micrometres against 51,966.970 square micrometres of core.
+Routing, precheck, and gate-level simulation were not reached. This profile
+moves hashing onto the chip; the complete design still exceeds one tile.
+
 ## GPIO simulation
 
 | RSA width | Seed/coin/message bits | Hash mode | FO cases | Rejected cases | SHA checks |
