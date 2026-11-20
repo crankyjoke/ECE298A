@@ -186,5 +186,9 @@ The workflow selects the FO sources and pin map in its disposable workspace;
 the checked-in root info.yaml continues to select the original RSA-only top.
 Manual workflow dispatch can choose a larger tile for separate experiments.
 The older encrypt/decrypt design exceeded one tile at 125.772% utilization
-with the compact hash on chip. Removing decryption requires a new area result.
+with the compact hash on chip. The
+[encryption-only run](https://github.com/crankyjoke/ECE298A/actions/runs/44663974041)
+passed the exhaustive hash and all RTL jobs and lowered placement utilization
+to **95.105%**. Global placement proceeded, but detailed placement failed
+with `DPL-0036`; the 1x1 physical build is still incomplete.
 See VALIDATION.md for current measurements and historical results.

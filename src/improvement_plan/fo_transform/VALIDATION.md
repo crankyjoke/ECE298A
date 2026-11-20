@@ -30,7 +30,19 @@ warnings, or inferred latches:
 
 Reports are in `.build/fo_synthesis_encrypt/`. The compact-hash full design
 uses 93 fewer LUTs and 74 fewer flip-flops than the earlier encrypt/decrypt
-version. A fresh GF180 run is needed to establish its one-tile fit.
+version.
+
+The [encryption-only GitHub run](https://github.com/crankyjoke/ECE298A/actions/runs/44663974041)
+passed all four FO RTL jobs (196 encryption/input-error cases across the eight
+configurations, plus 80 SHA-block checks) and the exhaustive compact-hash job.
+The 1x1 GF180 build reported 43,868.877 square micrometres of initial instances
+in 51,966.970 square micrometres of core (84.4% initial utilization).
+Pin-density adjustment raised placement's movable area to 47,970.136 square
+micrometres, or **95.105% utilization**. This is below the earlier 125.772%.
+OpenROAD automatically raised the 60% placement target to 96% and completed
+global placement. Post-placement repair then failed to legalize 104 instances
+(`DPL-0036`). The build did not reach routing, precheck, or gate-level simulation.
+The reduced logic is validated, but one-tile physical completion is unestablished.
 
 ## Previous encrypt/decrypt compact hash profile
 
