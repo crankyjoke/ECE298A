@@ -98,6 +98,13 @@ The default FO configuration has been reduced to **28-bit RSA with 7-bit
 seed/coin/message fields**, and the dedicated workflow retains the **1x1**
 target. The 42- and 56-bit RTL configurations remain in its test matrix.
 This does not change the committed original RSA submission's manifest.
-The reduced configuration still needs a successful physical run to establish fit.
-For the current outcome,
+The [reduced 28-bit run](https://github.com/crankyjoke/ECE298A/actions/runs/44660147412)
+passed all three RTL jobs, but its 1x1 physical build also failed `GPL-0301`,
+at **112.272% utilization**. Initial floorplanning reported 50,395.206 square
+micrometres of instances in 51,966.970 square micrometres of core area;
+placement's movable area after adjustment was 56,629.048 square micrometres.
+Thus the smaller default reduces area substantially but still does not fit
+the 1x1 budget. Routing, physical precheck, and gate-level tests were not reached.
+Further architectural area reductions or a larger allocation are required.
+For subsequent outcomes,
 see the [FO hardware workflow](https://github.com/crankyjoke/ECE298A/actions/workflows/fo.yaml).

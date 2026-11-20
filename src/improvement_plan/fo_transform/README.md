@@ -229,6 +229,10 @@ utilization in 1x1. The default has therefore been reduced to 28-bit RSA and
 7-bit seed/coin/message fields, retaining the 1x1 target. A manual workflow run
 can select a larger tile for separate experiments. The original submission's
 root manifest remains unchanged.
+The [28-bit 1x1 attempt](https://github.com/crankyjoke/ECE298A/actions/runs/44660147412)
+also passed RTL tests but failed placement at **112.272% utilization**. The
+reduction saves area but still does not fit one tile; further architectural
+area reductions or a larger allocation are required.
 A successful RTL test does not establish physical fit. Build logs and the
 generated FO manifest are uploaded even when hardening fails. The standalone
 gate-level regression uses a slow functional clock and the generated netlist;
