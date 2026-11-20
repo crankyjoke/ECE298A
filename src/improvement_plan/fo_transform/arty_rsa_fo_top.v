@@ -3,7 +3,7 @@
 // Same port names as the existing arty_rsa_top/XDC. result_high now carries
 // {HASH_REQUEST, ERROR, data[11:8]}; it is not six extra ciphertext bits.
 module arty_rsa_fo_top #(
-    parameter integer WIDTH=28,
+    parameter integer WIDTH=28, WORD_BITS=2,
     parameter integer SEED_BITS=7, COIN_BITS=7, MESSAGE_BITS=7,
     parameter integer EXTERNAL_HASH=0, SMALL_HASH=1
 ) (
@@ -16,7 +16,7 @@ module arty_rsa_fo_top #(
     output wire [3:0] leds
 );
     wire [7:0] uio_out,unused_oe;
-    tt_um_rsa_fo #(.WIDTH(WIDTH),.SEED_BITS(SEED_BITS),.COIN_BITS(COIN_BITS),
+    tt_um_rsa_fo #(.WIDTH(WIDTH),.WORD_BITS(WORD_BITS),.SEED_BITS(SEED_BITS),.COIN_BITS(COIN_BITS),
         .MESSAGE_BITS(MESSAGE_BITS),.EXTERNAL_HASH(EXTERNAL_HASH),.SMALL_HASH(SMALL_HASH)) rsa (
         .clk(stm_clk),.rst_n(stm_rst_n),.ena(1'b1),
         .ui_in(ui_in),.uo_out(uo_out),.uio_in({start,7'b0}),

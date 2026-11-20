@@ -4,7 +4,43 @@ Validated on 2026-11-19 using Vivado Simulator and Vivado synthesis 2021.2.
 These checks validate the implemented educational profile; they are not a
 security proof, cryptographic certification, GF180 physical flow, or board test.
 
-## Current encryption-only profile
+## Current area-optimized encryption-only profile
+
+The optimized exponentiator uses left-to-right square-and-multiply and reads
+the stable public exponent and encoded base directly. It removes their two
+full-width copies and the serial reload controller. The internal arithmetic
+word is now two bits; the 28-bit RSA, seven-bit hash, and 11-load GPIO protocol
+are unchanged. Malformed input uses a scalar error flag rather than gating
+every exponent bit.
+
+Vivado Simulator passed 90 default-profile FO cases (45 in each hash-service
+mode), including random exponent/modulus patterns, top-bit-only and alternating
+exponents, bad inputs, and pauses both during hashing and RSA arithmetic.
+The wider 42-bit / 14-bit-field SHA-256 configuration also passed 62 FO cases
+and 20 SHA checks across internal/external hash-service modes.
+The seven-bit and one-bit internal arithmetic candidates also passed the same
+90-case regression before the final input-error gating optimization.
+
+Vivado synthesis for xc7s25csga324-1 completed without errors, critical warnings,
+or latches: **263 LUTs / 245 flip-flops** with the compact hash, and
+735 LUTs / 730 flip-flops with SHA-256. Reports are in
+`.build/fo_synthesis_optimized/`. The preceding encryption-only version used
+358 LUTs / 309 flip-flops. These FPGA counts do not establish ASIC fit.
+
+The arithmetic-width screening sweep (before the scalar input-error change)
+reported:
+
+| Arithmetic bits | LUTs | Flip-flops |
+| --- | --- | --- |
+| 1 | 301 | 245 |
+| 2 | 273 | 245 |
+| 4 | 279 | 246 |
+| 7 | 320 | 249 |
+
+The two-bit choice trades more cycles for area, while keeping the public
+exponent programmable. A new 1x1 GF180 run tests placement/routing next.
+
+## Previous encryption-only profile
 
 The current hardware accepts only `header=0, N, e, seed, message` and returns
 the ciphertext pair. The private-key bank, ciphertext input bank, decrypt

@@ -3,7 +3,7 @@
 // Encryption-only GPIO top for the experimental FO profile. See README.
 // Default hashes on-chip with Keccak25-7; SMALL_HASH=0 selects SHA-256.
 module tt_um_rsa_fo #(
-    parameter integer WIDTH=28, WORD_BITS=7,
+    parameter integer WIDTH=28, WORD_BITS=2,
     parameter integer SEED_BITS=7, COIN_BITS=7, MESSAGE_BITS=7,
     parameter integer EXTERNAL_HASH=0, SMALL_HASH=1
 ) (
@@ -70,8 +70,7 @@ module tt_um_rsa_fo #(
         .COIN_BITS(COIN_BITS),.MESSAGE_BITS(MESSAGE_BITS),.EXTERNAL_HASH(EXTERNAL_HASH),
         .SMALL_HASH(SMALL_HASH)) engine (
         .clk(clk),.rst_n(rst_n),.ena(ena),.clear(clear_engine),.start(engine_start),
-        .modulus(modulus),
-        .public_exponent(malformed?{WIDTH{1'b0}}:public_exponent),
+        .invalid_input(malformed),.modulus(modulus),.public_exponent(public_exponent),
         .random_seed(seed_input[SEED_BITS-1:0]),.message(message_input[MESSAGE_BITS-1:0]),
         .busy(engine_busy),.done(engine_done),.error(engine_error),
         .ciphertext_out(output_cipher),.masked_out(output_masked),

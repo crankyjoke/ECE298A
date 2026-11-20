@@ -16,7 +16,7 @@ from run_tests import find_simulator, run_command, previous_prime
 sys.path.insert(0,str(ROOT))
 from fo_reference import encrypt, decrypt, hash_value, packet_chunks
 
-SOURCES=[PARENT/name for name in ("rsa_alu.v","rsa_modmul.v","rsa_modexp.v")]
+SOURCES=[PARENT/name for name in ("rsa_alu.v","rsa_modmul.v")]
 SOURCES += [ROOT/name for name in ("sha256_block.v","tiny_hash7.v","fo_hash.v","rsa_adapter.v","fo_engine.v","project.v")]
 SOURCES += [ROOT/"test"/"tb_fo.sv"]
 
@@ -63,8 +63,12 @@ def test_vectors(args):
             raise AssertionError("reference round trip failed")
         # Decryption is performed only by the software receiver; d is never loaded.
         add(0,n,e,seed,message)
-    for ee in (1,17,(1<<w)-1):
+    for ee in (1,2,3,17,1<<(w-1),(1<<(w-1))|1,((1<<w)-1)//3,(1<<w)-1):
         add(0,n,ee,3,23&((1<<m)-1))
+    # Arbitrary exponent patterns and moduli exercise the left-to-right core.
+    for _ in range(args.random_cases):
+        add(0,rng.randrange(1<<(s+r),1<<w),rng.randrange(1,1<<w),
+            rng.randrange(1<<s),rng.randrange(1<<m))
     for nn in (1<<(s+r),(1<<w)-1):
         add(0,nn,e,(1<<s)-1,(1<<m)-1)
     # The previous decrypt command is now an invalid header, as are other opcodes.
@@ -87,6 +91,7 @@ def main():
     parser.add_argument("--simulator",choices=("auto","icarus","vivado"),default="auto")
     parser.add_argument("--vivado-bin",type=Path)
     parser.add_argument("--width",type=int,default=28)
+    parser.add_argument("--word-bits",type=int,default=2)
     parser.add_argument("--seed-bits",type=int,default=7)
     parser.add_argument("--coin-bits",type=int,default=7)
     parser.add_argument("--message-bits",type=int,default=7)
@@ -98,13 +103,15 @@ def main():
         parser.error("test WIDTH must be a multiple of seven in 21..63 and exceed seed+coin widths")
     if min(args.seed_bits,args.coin_bits,args.message_bits)<1 or args.random_cases<0:
         parser.error("invalid bit width or case count")
+    if not 1<=args.word_bits<=args.width:
+        parser.error("word bits must be between one and WIDTH")
     if args.hash_name=="tiny" and (args.seed_bits,args.coin_bits,args.message_bits)!=(7,7,7):
         parser.error("the tiny hash requires seven-bit seed/coin/message fields")
     simulator,commands=find_simulator(args)
     rows,hashes,sha=test_vectors(args)
     summaries=[]
     for external in args.external_hash:
-        build=PARENT/".build"/f"fo_enc_{args.hash_name}_w{args.width}_s{args.seed_bits}_r{args.coin_bits}_m{args.message_bits}_ext{external}_{simulator}"
+        build=PARENT/".build"/f"fo_enc_{args.hash_name}_w{args.width}_alu{args.word_bits}_s{args.seed_bits}_r{args.coin_bits}_m{args.message_bits}_ext{external}_{simulator}"
         build.mkdir(parents=True,exist_ok=True)
         (build/"commands.log").write_text("")
         for name,data in (("fo_vectors.txt",rows),("fo_hashes.txt",hashes),("sha_vectors.txt",sha)):
@@ -114,7 +121,7 @@ def main():
                 chunks=packet_chunks(n,e,seed,payload,width=args.width,
                     seed_bits=args.seed_bits,message_bits=args.message_bits)
                 assert len(chunks)==1+2*(args.width//7)+(args.seed_bits+6)//7+(args.message_bits+6)//7
-        parameters=dict(WIDTH=args.width,SEED_BITS=args.seed_bits,COIN_BITS=args.coin_bits,
+        parameters=dict(WIDTH=args.width,WORD_BITS=args.word_bits,SEED_BITS=args.seed_bits,COIN_BITS=args.coin_bits,
                         MESSAGE_BITS=args.message_bits,EXTERNAL_HASH=external,SMALL_HASH=int(args.hash_name=="tiny"))
         started=time.monotonic()
         if simulator=="icarus":
@@ -132,7 +139,7 @@ def main():
         marker=f"FO_PASS external={external} cases={len(rows)+1} sha={len(sha)}"
         if marker not in output or re.search(r"\b(?:Fatal|FATAL|ERROR):",output):
             raise AssertionError(output)
-        summary=dict(width=args.width,hash_name=args.hash_name,external_hash=external,fo_cases=len(rows)+1,
+        summary=dict(width=args.width,word_bits=args.word_bits,hash_name=args.hash_name,external_hash=external,fo_cases=len(rows)+1,
                      sha_cases=len(sha),error_cases=sum(not row[-2] for row in rows),
                      hash_fixtures=len(hashes),seconds=round(time.monotonic()-started,2))
         (build/"summary.json").write_text(json.dumps(summary,indent=2)+"\n")

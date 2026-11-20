@@ -1,12 +1,12 @@
 `default_nettype none
 `timescale 1ns/1ps
 module tb_fo;
-    parameter integer WIDTH=28,SEED_BITS=7,COIN_BITS=7,MESSAGE_BITS=7,EXTERNAL_HASH=0,SMALL_HASH=1;
+    parameter integer WIDTH=28,WORD_BITS=2,SEED_BITS=7,COIN_BITS=7,MESSAGE_BITS=7,EXTERNAL_HASH=0,SMALL_HASH=1;
     localparam integer HASH_BITS=(MESSAGE_BITS>COIN_BITS)?MESSAGE_BITS:COIN_BITS;
     localparam integer REQUEST_BITS=1+SEED_BITS+MESSAGE_BITS;
     localparam integer REQUEST_PAGES=(REQUEST_BITS+11)/12;
     localparam integer RESULT_BITS=WIDTH+MESSAGE_BITS,RESULT_PAGES=(RESULT_BITS+11)/12;
-    localparam integer WORDS=(WIDTH+7)/7;
+    localparam integer WORDS=(WIDTH+WORD_BITS)/WORD_BITS;
     localparam integer LIMIT=(4*WIDTH+4)*(WIDTH*(5*WORDS+4)+72)+4096;
     reg clk=0,rst_n=0,ena=1;
     reg [7:0] ui_in=0,uio_in=0;
@@ -40,7 +40,7 @@ module tb_fo;
         .VPWR(1'b1),.VGND(1'b0),
 `else
     always #5 clk=~clk;
-    tt_um_rsa_fo #(.WIDTH(WIDTH),.SEED_BITS(SEED_BITS),.COIN_BITS(COIN_BITS),
+    tt_um_rsa_fo #(.WIDTH(WIDTH),.WORD_BITS(WORD_BITS),.SEED_BITS(SEED_BITS),.COIN_BITS(COIN_BITS),
         .MESSAGE_BITS(MESSAGE_BITS),.EXTERNAL_HASH(EXTERNAL_HASH),.SMALL_HASH(SMALL_HASH)) dut (
 `endif
         .clk(clk),.rst_n(rst_n),.ena(ena),.ui_in(ui_in),.uio_in(uio_in),
@@ -125,7 +125,7 @@ module tb_fo;
                 if (uio_out[5]===1) service_hash();
                 else if (uio_out[6]!==1 && (uo_out!==0 || uio_out[3:0]!==0))
                     $fatal(1,"Data appeared before encryption completed");
-                if (cycle==3) begin
+                if (cycle==3 || cycle==100) begin
                     saved_uio=uio_out;saved_uo=uo_out;
                     ena=0;load_chunk(7'h55);control();
                     if (uio_out!==saved_uio || uo_out!==saved_uo) $fatal(1,"ena did not pause GPIO state");

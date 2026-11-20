@@ -37,7 +37,7 @@ def main():
         commands = [
             ["iverilog", "-g2012", "-s", "tb_fo", "-DGL_TEST", "-DFUNCTIONAL",
              "-DUSE_POWER_PINS", "-DSIM", "-DUNIT_DELAY=#1", "-Ptb_fo.EXTERNAL_HASH=0",
-             "-Ptb_fo.WIDTH=28", "-Ptb_fo.SEED_BITS=7", "-Ptb_fo.COIN_BITS=7", "-Ptb_fo.MESSAGE_BITS=7",
+             "-Ptb_fo.WIDTH=28", "-Ptb_fo.WORD_BITS=2", "-Ptb_fo.SEED_BITS=7", "-Ptb_fo.COIN_BITS=7", "-Ptb_fo.MESSAGE_BITS=7",
              "-o", ".build/gate.vvp", str(lib / "primitives.v"),
              str(lib / "gf180mcu_fd_sc_mcu7t5v0.v"), "gate_level_netlist.v", str(ROOT / "test/tb_fo.sv")],
             ["vvp", ".build/gate.vvp"],

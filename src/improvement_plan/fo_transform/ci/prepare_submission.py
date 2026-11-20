@@ -11,7 +11,6 @@ import re
 SOURCES = [
     "improvement_plan/rsa_alu.v",
     "improvement_plan/rsa_modmul.v",
-    "improvement_plan/rsa_modexp.v",
     "improvement_plan/fo_transform/sha256_block.v",
     "improvement_plan/fo_transform/tiny_hash7.v",
     "improvement_plan/fo_transform/fo_hash.v",

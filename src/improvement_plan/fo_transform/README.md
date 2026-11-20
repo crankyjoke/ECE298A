@@ -17,7 +17,7 @@ variable execution time, and complete key-register zeroization is not provided.
 
 ## Exact encryption profile
 
-Default parameters: `WIDTH=28`, `SEED_BITS=7`, `COIN_BITS=7`, `MESSAGE_BITS=7`,
+Default parameters: `WIDTH=28`, `WORD_BITS=2`, `SEED_BITS=7`, `COIN_BITS=7`, `MESSAGE_BITS=7`,
 `SMALL_HASH=1`, `EXTERNAL_HASH=0`. The repository-specific hash is called
 **Keccak25-7**; it uses the full twelve-round
 [Keccak-f[25] permutation](https://keccak.team/keccakp.html), rather than SHA-3
@@ -47,6 +47,16 @@ encryption. There is no key generator or TRNG. The hardware checks
 `N >= 2**(SEED_BITS+COIN_BITS)` and `e > 0`; the host validates key suitability.
 All operands must fit their configured widths, with seed+coin widths below WIDTH.
 Inputs of the native `rsa_fo_engine` must remain stable through DONE.
+Tie its `invalid_input` port low for a valid native request; the GPIO top uses
+it to report malformed headers/padding without gating the whole exponent bus.
+
+The exponentiator scans the exponent from its most-significant set bit toward
+bit zero, squaring and optionally multiplying the running result. It reads the
+stable public exponent and encoded base directly, eliminating two full-width
+operand copies and their serial reload controller. The multiplier shares a
+two-bit adder/subtractor and rotates words through its accumulator. This takes
+more arithmetic cycles than the previous seven-bit ALU, while keeping the same
+28-bit operands, ciphertext, and seven-bit GPIO packet.
 
 `fo_reference.py` provides encryption plus receiver-side software decryption and
 verification. Its decryption helper is not synthesized into the chip. This
@@ -140,7 +150,6 @@ Design sources are:
 ```text
 ../rsa_alu.v
 ../rsa_modmul.v
-../rsa_modexp.v
 sha256_block.v
 tiny_hash7.v
 fo_hash.v
@@ -171,7 +180,9 @@ regression covers all 16,384 H inputs and all 128 G seeds.
 Simulation-only files must not be added to Design Sources. Generated files and
 logs are under the parent's ignored `.build/`. The synthesis script
 `test/check_synthesis.tcl` compares the two on-chip hashes and writes FPGA
-resource reports to `.build/fo_synthesis_encrypt/`. FPGA counts do not establish
+resource reports to `.build/fo_synthesis_optimized/`. The optional
+`test/check_area.tcl` compares internal arithmetic widths; the regression accepts
+`--word-bits` to test them. FPGA counts do not establish
 GF180 area or timing.
 
 ## Tiny Tapeout builds
@@ -191,4 +202,7 @@ with the compact hash on chip. The
 passed the exhaustive hash and all RTL jobs and lowered placement utilization
 to **95.105%**. Global placement proceeded, but detailed placement failed
 with `DPL-0036`; the 1x1 physical build is still incomplete.
+The next revision removes duplicate RSA operand banks and uses two-bit
+arithmetic to leave more placement margin; its physical result is recorded below
+when available.
 See VALIDATION.md for current measurements and historical results.

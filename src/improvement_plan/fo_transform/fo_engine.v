@@ -3,12 +3,12 @@
 // Encryption-only educational hybrid FO profile. No private key or decrypt path.
 // Inputs must stay stable from start until done (the GPIO top owns their banks).
 module rsa_fo_engine #(
-    parameter integer WIDTH=28, WORD_BITS=7,
+    parameter integer WIDTH=28, WORD_BITS=2,
     parameter integer SEED_BITS=7, COIN_BITS=7, MESSAGE_BITS=7,
     parameter integer EXTERNAL_HASH=0, SMALL_HASH=1,
     parameter integer HASH_BITS=(MESSAGE_BITS>COIN_BITS)?MESSAGE_BITS:COIN_BITS
 ) (
-    input wire clk, rst_n, ena, clear, start,
+    input wire clk, rst_n, ena, clear, start, invalid_input,
     input wire [WIDTH-1:0] modulus, public_exponent,
     input wire [SEED_BITS-1:0] random_seed,
     input wire [MESSAGE_BITS-1:0] message,
@@ -68,7 +68,7 @@ module rsa_fo_engine #(
         else if (ena) case(state)
             IDLE,FINISHED: if (start) begin
                 valid_output<=0;
-                state<=(modulus<MIN_MODULUS || public_exponent==0)?FINISHED:G_REQ;
+                state<=(invalid_input || modulus<MIN_MODULUS || public_exponent==0)?FINISHED:G_REQ;
             end
             G_REQ: if (hash_ready) state<=G_WAIT;
             G_WAIT: if (hash_valid) state<=H_REQ;
