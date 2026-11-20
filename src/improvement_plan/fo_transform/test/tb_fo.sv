@@ -35,9 +35,11 @@ module tb_fo;
     wire sha_done,sha_busy;
 `ifdef GL_TEST
     // Allow standard-cell delays to settle; this is functional gate simulation.
+    supply1 VPWR;
+    supply0 VGND;
     always #5000 clk=~clk;
     tt_um_rsa_fo dut (
-        .VPWR(1'b1),.VGND(1'b0),
+        .VPWR(VPWR),.VGND(VGND),
 `else
     always #5 clk=~clk;
     tt_um_rsa_fo #(.WIDTH(WIDTH),.WORD_BITS(WORD_BITS),.SEED_BITS(SEED_BITS),.COIN_BITS(COIN_BITS),
