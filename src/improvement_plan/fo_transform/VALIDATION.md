@@ -4,9 +4,37 @@ Validated on 2026-11-19 using Vivado Simulator and Vivado synthesis 2021.2.
 These checks validate the implemented educational profile; they are not a
 security proof, cryptographic certification, GF180 physical flow, or board test.
 
-## Current compact hash profile
+## Current encryption-only profile
 
-The default is now on-chip **Keccak25-7**, using the full 12-round
+The current hardware accepts only `header=0, N, e, seed, message` and returns
+the ciphertext pair. The private-key bank, ciphertext input bank, decrypt
+states, plaintext recovery, and re-encryption comparison have been removed.
+Header 1 (the former decrypt command) now produces an input error and zero
+output. The default packet has **11 loads**, with three twelve-bit result words.
+`uio[4]` now means input ERROR. Receiver decryption remains in Python only.
+
+Vivado Simulator passed **56 encryption-only FO cases** with the compact hash
+(28 per internal/external mode, including seven invalid-input cases per mode)
+and 20 SHA-block checks. The SHA-256 configuration passed another 42 FO cases
+and 20 SHA-block checks. Public-key boundary cases, software receiver round
+trips, repeated transactions, enable pauses, and reset behavior are covered.
+The standalone compact hash was unchanged; its exhaustive results are below.
+
+Vivado synthesis for xc7s25csga324-1 completed with zero errors, critical
+warnings, or inferred latches:
+
+| Encryption-only configuration | LUTs | Flip-flops |
+| --- | --- | --- |
+| On-chip compact hash | 358 | 309 |
+| On-chip SHA-256 | 798 | 794 |
+
+Reports are in `.build/fo_synthesis_encrypt/`. The compact-hash full design
+uses 93 fewer LUTs and 74 fewer flip-flops than the earlier encrypt/decrypt
+version. A fresh GF180 run is needed to establish its one-tile fit.
+
+## Previous encrypt/decrypt compact hash profile
+
+Before removing decryption, the default was on-chip **Keccak25-7**, using the full 12-round
 Keccak-f[25] permutation, a seven-bit rate, 18-bit capacity, pad10*1, and
 seven-bit output. This is a repository-specific educational profile. The
 results in the later sections describe the earlier SHA-256 configurations.

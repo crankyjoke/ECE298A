@@ -1,7 +1,7 @@
 `default_nettype none
 
 // Same port names as the existing arty_rsa_top/XDC. result_high now carries
-// {HASH_REQUEST, REJECTED, data[11:8]}; it is not six extra ciphertext bits.
+// {HASH_REQUEST, ERROR, data[11:8]}; it is not six extra ciphertext bits.
 module arty_rsa_fo_top #(
     parameter integer WIDTH=28,
     parameter integer SEED_BITS=7, COIN_BITS=7, MESSAGE_BITS=7,

@@ -3,7 +3,7 @@
 # FPGA synthesis only: these reports do not establish GF180 tile fit.
 set root [file dirname [file dirname [file normalize [info script]]]]
 set parent [file dirname $root]
-set output [file join $parent .build fo_synthesis_hash7]
+set output [file join $parent .build fo_synthesis_encrypt]
 file mkdir $output
 foreach small {1 0} {
     create_project -in_memory -part xc7s25csga324-1

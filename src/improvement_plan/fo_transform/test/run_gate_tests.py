@@ -27,7 +27,7 @@ def main():
     for name, data in (("fo_vectors.txt", rows), ("fo_hashes.txt", hashes), ("sha_vectors.txt", sha)):
         (work / name).write_text("".join(" ".join(f"{value:x}" for value in row) + "\n" for row in data))
     testsuite = ET.Element("testsuite", name="FO GF180 gate-level", tests="1")
-    testcase = ET.SubElement(testsuite, "testcase", name="gpio_encryption_decryption_rejection")
+    testcase = ET.SubElement(testsuite, "testcase", name="gpio_encryption_and_invalid_inputs")
     log = []
     try:
         lib = Path(os.environ["PDK_ROOT"]) / "gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/verilog"

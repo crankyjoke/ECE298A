@@ -17,13 +17,13 @@ module tb_fo;
     reg [MESSAGE_BITS-1:0] table_message [0:4095];
     reg [HASH_BITS-1:0] table_value [0:4095];
     reg [6:0] command;
-    reg [WIDTH-1:0] n,e,d,cipher;
+    reg [WIDTH-1:0] n,e;
     reg [SEED_BITS-1:0] seed;
     reg [MESSAGE_BITS-1:0] payload;
     reg expected_accept;
     reg [RESULT_BITS-1:0] expected;
     reg [6:0] first_command;
-    reg [WIDTH-1:0] first_n,first_e,first_d,first_cipher;
+    reg [WIDTH-1:0] first_n,first_e;
     reg [SEED_BITS-1:0] first_seed;
     reg [MESSAGE_BITS-1:0] first_payload;
     reg first_accept;
@@ -78,7 +78,7 @@ module tb_fo;
             if (uio_out[6]!==0 || uio_out[5]!==0) $fatal(1,"New frame did not clear status");
             control();
             if (uio_out[6]!==0) $fatal(1,"Premature START accepted");
-            load_operand(n);load_operand(e);load_operand(d);load_operand(cipher);
+            load_operand(n);load_operand(e);
             for(i=0;i<(SEED_BITS+6)/7;i=i+1) load_chunk((seed>>(i*7))&7'h7f);
             for(i=0;i<(MESSAGE_BITS+6)/7;i=i+1) load_chunk((payload>>(i*7))&7'h7f);
             load_chunk(7'h7f); // Complete-frame surplus input must be ignored.
@@ -124,7 +124,7 @@ module tb_fo;
                 ticks(1);cycle=cycle+1;
                 if (uio_out[5]===1) service_hash();
                 else if (uio_out[6]!==1 && (uo_out!==0 || uio_out[3:0]!==0))
-                    $fatal(1,"Data appeared on result channel before verification");
+                    $fatal(1,"Data appeared before encryption completed");
                 if (cycle==3) begin
                     saved_uio=uio_out;saved_uo=uo_out;
                     ena=0;load_chunk(7'h55);control();
@@ -133,7 +133,7 @@ module tb_fo;
                 end
             end
             if (uio_out[6]!==1) $fatal(1,"FO timeout");
-            if (uio_out[4] !== !expected_accept) $fatal(1,"Wrong ciphertext acceptance decision, case %d",cases);
+            if (uio_out[4] !== !expected_accept) $fatal(1,"Wrong encryption error flag, case %d",cases);
             actual=0;
             for(page=0;page<RESULT_PAGES;page=page+1) begin
                 actual=actual | ({{(RESULT_PAGES*12-12){1'b0}},uio_out[3:0],uo_out}<<(page*12));
@@ -183,17 +183,17 @@ module tb_fo;
         fd=$fopen("fo_vectors.txt","r");
         if(!fd) $fatal(1,"Missing FO vectors");
         while(!$feof(fd)) begin
-            scanned=$fscanf(fd,"%h %h %h %h %h %h %h %h %h\n",command,n,e,d,cipher,seed,payload,expected_accept,expected);
-            if(scanned!=9) $fatal(1,"Malformed FO vector");
+            scanned=$fscanf(fd,"%h %h %h %h %h %h %h\n",command,n,e,seed,payload,expected_accept,expected);
+            if(scanned!=7) $fatal(1,"Malformed FO vector");
             if(cases==0) begin
-                first_command=command;first_n=n;first_e=e;first_d=d;first_cipher=cipher;
+                first_command=command;first_n=n;first_e=e;
                 first_seed=seed;first_payload=payload;first_accept=expected_accept;first_expected=expected;
             end
             transaction();
         end
         $fclose(fd);
         // Reset aborts a pending hash operation or an unfinished packet.
-        command=first_command;n=first_n;e=first_e;d=first_d;cipher=first_cipher;
+        command=first_command;n=first_n;e=first_e;
         seed=first_seed;payload=first_payload;expected_accept=first_accept;expected=first_expected;
         load_frame();control();ticks(8);reset_chip();
         load_chunk(0);load_chunk(7'h12);reset_chip();

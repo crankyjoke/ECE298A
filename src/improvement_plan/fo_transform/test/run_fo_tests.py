@@ -1,4 +1,4 @@
-"""Generate independent FO/SHA vectors and simulate the GPIO hardware."""
+"""Compare encryption-only FO GPIO output with Python; decrypt only in software."""
 import argparse
 import hashlib
 import json
@@ -41,27 +41,18 @@ def test_vectors(args):
         hashes[key]=hash_value(kind,seed,message,seed_bits=s,message_bits=m,value_bits=bits,hash_name=args.hash_name)
         return hashes[key]
 
-    def add(command,nn,ee,dd,c1,seed,payload):
-        accepted=False;output=0
-        if command in (0,1) and nn >= 1 << (s+r) and ee>0 and (not command or dd>0):
-            if not command:
-                mask=oracle(0,seed)&((1<<m)-1)
-                coins=oracle(1,seed,payload)&((1<<r)-1)
-                result=pow((seed<<r)|coins,ee,nn)
-                masked=payload ^ mask
-                if (result,masked)!=encrypt(nn,ee,payload,seed=seed,**kw):
-                    raise AssertionError("reference encryption mismatch")
-                accepted=True;output=result | (masked<<w)
-            else:
-                representative=pow(c1 if c1<nn else 0,dd,nn)
-                recovered=(representative>>r)&((1<<s)-1)
-                candidate=payload ^ (oracle(0,recovered)&((1<<m)-1))
-                coins=oracle(1,recovered,candidate)&((1<<r)-1)
-                accepted=c1<nn and representative>>(s+r)==0 and pow((recovered<<r)|coins,ee,nn)==c1
-                output=candidate if accepted else 0
-                if decrypt(nn,ee,dd,c1,payload,**kw)!=(candidate if accepted else None):
-                    raise AssertionError("reference rejection mismatch")
-        rows.append((command,nn,ee,dd,c1,seed,payload,int(accepted),output))
+    def add(command,nn,ee,seed,payload):
+        accepted=command==0 and nn >= 1 << (s+r) and ee>0
+        output=0
+        if accepted:
+            mask=oracle(0,seed)&((1<<m)-1)
+            coins=oracle(1,seed,payload)&((1<<r)-1)
+            result=pow((seed<<r)|coins,ee,nn)
+            masked=payload ^ mask
+            if (result,masked)!=encrypt(nn,ee,payload,seed=seed,**kw):
+                raise AssertionError("reference encryption mismatch")
+            output=result | (masked<<w)
+        rows.append((command,nn,ee,seed,payload,int(accepted),output))
 
     rng=random.Random(29819)
     messages=[(0,0),((1<<s)-1,(1<<m)-1),(1,65&((1<<m)-1))]
@@ -70,33 +61,18 @@ def test_vectors(args):
         c1,c2=encrypt(n,e,message,seed=seed,**kw)
         if decrypt(n,e,d,c1,c2,**kw)!=message:
             raise AssertionError("reference round trip failed")
-        add(0,n,e,0,0,seed,message)
-        add(1,n,e,d,c1,0,c2)
-        # Choose a changed symmetric component which must reject even with toy hashes.
-        for bit in range(m):
-            altered=c2 ^ (1<<bit)
-            if decrypt(n,e,d,c1,altered,**kw) is None:
-                add(1,n,e,d,c1,0,altered)
-                break
-        else:
-            raise AssertionError("could not construct a rejection fixture")
-    c1,c2=encrypt(n,e,23&((1<<m)-1),seed=3,**kw)
-    for bit in range(w):
-        altered=c1 ^ (1<<bit)
-        if decrypt(n,e,d,altered,c2,**kw) is None:
-            add(1,n,e,d,altered,0,c2)
-            break
-    for bit in range(w):
-        wrong_d=d ^ (1<<bit)
-        if wrong_d>0 and decrypt(n,e,wrong_d,c1,c2,**kw) is None:
-            add(1,n,e,wrong_d,c1,0,c2)
-            break
-    for altered in (n,n+1,pow(1<<(s+r),e,n)):
-        add(1,n,e,d,altered,0,c2)
-    add(1,n,e,0,c1,0,c2)
-    add(0,n,0,0,0,3,23&((1<<m)-1))
-    add(0,(1<<(s+r))-1,e,0,0,3,23&((1<<m)-1))
-    add(2,n,e,0,0,3,23&((1<<m)-1))
+        # Decryption is performed only by the software receiver; d is never loaded.
+        add(0,n,e,seed,message)
+    for ee in (1,17,(1<<w)-1):
+        add(0,n,ee,3,23&((1<<m)-1))
+    for nn in (1<<(s+r),(1<<w)-1):
+        add(0,nn,e,(1<<s)-1,(1<<m)-1)
+    # The previous decrypt command is now an invalid header, as are other opcodes.
+    for command in (1,2,127):
+        add(command,n,e,3,23&((1<<m)-1))
+    add(0,n,0,3,23&((1<<m)-1))
+    for nn in (0,1,(1<<(s+r))-1):
+        add(0,nn,e,3,23&((1<<m)-1))
     sha_messages=[b"",b"abc",b"a"*55,bytes(range(55))]
     sha_messages += [rng.randbytes(size) for size in (1,2,7,13,31,54)]
     sha=[]
@@ -128,16 +104,16 @@ def main():
     rows,hashes,sha=test_vectors(args)
     summaries=[]
     for external in args.external_hash:
-        build=PARENT/".build"/f"fo_{args.hash_name}_w{args.width}_s{args.seed_bits}_r{args.coin_bits}_m{args.message_bits}_ext{external}_{simulator}"
+        build=PARENT/".build"/f"fo_enc_{args.hash_name}_w{args.width}_s{args.seed_bits}_r{args.coin_bits}_m{args.message_bits}_ext{external}_{simulator}"
         build.mkdir(parents=True,exist_ok=True)
         (build/"commands.log").write_text("")
         for name,data in (("fo_vectors.txt",rows),("fo_hashes.txt",hashes),("sha_vectors.txt",sha)):
             (build/name).write_text("".join(" ".join(f"{x:x}" for x in row)+"\n" for row in data),encoding="ascii")
-        for command,n,e,d,c1,seed,payload,_,_ in rows:
-            if command in (0,1):
-                chunks=packet_chunks(command,n,e,d,c1,seed,payload,width=args.width,
+        for command,n,e,seed,payload,_,_ in rows:
+            if command==0:
+                chunks=packet_chunks(n,e,seed,payload,width=args.width,
                     seed_bits=args.seed_bits,message_bits=args.message_bits)
-                assert len(chunks)==1+4*(args.width//7)+(args.seed_bits+6)//7+(args.message_bits+6)//7
+                assert len(chunks)==1+2*(args.width//7)+(args.seed_bits+6)//7+(args.message_bits+6)//7
         parameters=dict(WIDTH=args.width,SEED_BITS=args.seed_bits,COIN_BITS=args.coin_bits,
                         MESSAGE_BITS=args.message_bits,EXTERNAL_HASH=external,SMALL_HASH=int(args.hash_name=="tiny"))
         started=time.monotonic()
@@ -157,7 +133,7 @@ def main():
         if marker not in output or re.search(r"\b(?:Fatal|FATAL|ERROR):",output):
             raise AssertionError(output)
         summary=dict(width=args.width,hash_name=args.hash_name,external_hash=external,fo_cases=len(rows)+1,
-                     sha_cases=len(sha),rejected_cases=sum(not row[-2] for row in rows),
+                     sha_cases=len(sha),error_cases=sum(not row[-2] for row in rows),
                      hash_fixtures=len(hashes),seconds=round(time.monotonic()-started,2))
         (build/"summary.json").write_text(json.dumps(summary,indent=2)+"\n")
         summaries.append(summary)

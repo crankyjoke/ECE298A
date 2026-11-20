@@ -102,14 +102,14 @@ def decrypt(modulus, public_exponent, private_exponent, ciphertext, masked,
     return candidate
 
 
-def packet_chunks(command, modulus, public_exponent, private_exponent,
-                  ciphertext, seed, payload, *, width=28, seed_bits=7, message_bits=7):
-    """GPIO packet: command, N, e, d, c1, sigma, payload; seven-bit LSF chunks."""
-    if command not in (0,1) or width < 14 or width % 7:
-        raise ValueError("invalid command or hardware width")
-    chunks=[command]
-    for value,bits in ((modulus,width),(public_exponent,width),(private_exponent,width),
-                       (ciphertext,width),(seed,seed_bits),(payload,message_bits)):
+def packet_chunks(modulus, public_exponent, seed, message, *, width=28,
+                  seed_bits=7, message_bits=7):
+    """Encryption-only GPIO packet: header=0, N, e, sigma, m; 7-bit LSF chunks."""
+    if width < 14 or width % 7:
+        raise ValueError("invalid hardware width")
+    chunks=[0]
+    for value,bits in ((modulus,width),(public_exponent,width),
+                       (seed,seed_bits),(message,message_bits)):
         if not 0 <= value < 1 << bits:
             raise ValueError("packet field exceeds its width")
         chunks.extend((value >> shift)&0x7f for shift in range(0,bits,7))

@@ -1,6 +1,6 @@
 `default_nettype none
 
-// GPIO top for the experimental hybrid FO profile. See this folder's README.
+// Encryption-only GPIO top for the experimental FO profile. See README.
 // Default hashes on-chip with Keccak25-7; SMALL_HASH=0 selects SHA-256.
 module tt_um_rsa_fo #(
     parameter integer WIDTH=28, WORD_BITS=7,
@@ -31,18 +31,18 @@ module tt_um_rsa_fo #(
     localparam integer PAGE_BITS=(MAX_PAGES>1)?$clog2(MAX_PAGES):1;
     (* async_reg="true" *) reg [6:0] data_meta,data_sync;
     (* async_reg="true" *) reg load_meta,load_sync,control_meta,control_sync;
-    reg load_prev,control_prev,loaded,decrypting,frame_error;
+    reg load_prev,control_prev,loaded,frame_error;
     reg [2:0] field;
     reg [COUNT_BITS-1:0] chunk_index;
-    reg [WIDTH-1:0] modulus,public_exponent,private_exponent,ciphertext;
+    reg [WIDTH-1:0] modulus,public_exponent;
     reg [SEED_PAD-1:0] seed_input;
-    reg [MESSAGE_PAD-1:0] payload_input;
+    reg [MESSAGE_PAD-1:0] message_input;
     wire [SEED_PAD-1:0] seed_chunk=data_sync;
-    wire [MESSAGE_PAD-1:0] payload_chunk=data_sync;
+    wire [MESSAGE_PAD-1:0] message_chunk=data_sync;
     wire [HASH_PAD-1:0] hash_chunk=data_sync;
     wire load_rise=load_sync && !load_prev;
     wire control_rise=control_sync && !control_prev;
-    wire engine_busy,engine_done,rejected,accepted;
+    wire engine_busy,engine_done,engine_error;
     wire hash_req_valid,hash_req_kind,hash_resp_ready;
     wire [SEED_BITS-1:0] hash_req_seed;
     wire [MESSAGE_BITS-1:0] hash_req_message;
@@ -54,12 +54,11 @@ module tt_um_rsa_fo #(
     wire capture=ena && !engine_busy && !loaded && !hash_pending && load_rise;
     wire clear_engine=capture && field==0;
     wire engine_start=ena && loaded && !engine_busy && !engine_done && control_rise;
-    wire malformed=frame_error || (|(seed_input >> SEED_BITS)) || (|(payload_input >> MESSAGE_BITS));
+    wire malformed=frame_error || (|(seed_input >> SEED_BITS)) || (|(message_input >> MESSAGE_BITS));
     wire [WIDTH-1:0] output_cipher;
-    wire [MESSAGE_BITS-1:0] output_masked,output_plaintext;
+    wire [MESSAGE_BITS-1:0] output_masked;
     reg [PAGE_BITS-1:0] page_index;
-    wire [RESULT_BITS-1:0] result_data=decrypting ?
-        {{WIDTH{1'b0}},output_plaintext}:{output_masked,output_cipher};
+    wire [RESULT_BITS-1:0] result_data={output_masked,output_cipher};
     // FO holds these operands through the response; do not duplicate their banks.
     wire [REQUEST_BITS-1:0] request_data={hash_req_kind,hash_req_message,hash_req_seed};
     wire [MAX_PAGES*12-1:0] result_padded=result_data;
@@ -71,12 +70,11 @@ module tt_um_rsa_fo #(
         .COIN_BITS(COIN_BITS),.MESSAGE_BITS(MESSAGE_BITS),.EXTERNAL_HASH(EXTERNAL_HASH),
         .SMALL_HASH(SMALL_HASH)) engine (
         .clk(clk),.rst_n(rst_n),.ena(ena),.clear(clear_engine),.start(engine_start),
-        .decrypt(decrypting),.modulus(modulus),
+        .modulus(modulus),
         .public_exponent(malformed?{WIDTH{1'b0}}:public_exponent),
-        .private_exponent(private_exponent),.ciphertext_in(ciphertext),
-        .random_seed(seed_input[SEED_BITS-1:0]),.payload(payload_input[MESSAGE_BITS-1:0]),
-        .busy(engine_busy),.done(engine_done),.rejected(rejected),.accepted(accepted),
-        .ciphertext_out(output_cipher),.masked_out(output_masked),.plaintext_out(output_plaintext),
+        .random_seed(seed_input[SEED_BITS-1:0]),.message(message_input[MESSAGE_BITS-1:0]),
+        .busy(engine_busy),.done(engine_done),.error(engine_error),
+        .ciphertext_out(output_cipher),.masked_out(output_masked),
         .hash_request_valid(hash_req_valid),.hash_request_kind(hash_req_kind),
         .hash_request_seed(hash_req_seed),.hash_request_message(hash_req_message),
         .hash_request_ready(hash_req_ready),.hash_response_valid(hash_resp_valid),
@@ -88,7 +86,7 @@ module tt_um_rsa_fo #(
         if (!rst_n) begin
             load_meta<=0;load_sync<=0;control_meta<=0;control_sync<=0;
             load_prev<=0;control_prev<=0;loaded<=0;field<=0;chunk_index<=0;
-            decrypting<=0;frame_error<=0;
+            frame_error<=0;
         end else begin
             load_meta<=ui_in[7];load_sync<=load_meta;
             control_meta<=uio_in[7];control_sync<=control_meta;
@@ -96,13 +94,13 @@ module tt_um_rsa_fo #(
             if (engine_start) begin loaded<=0;field<=0;chunk_index<=0;end
             else if (capture) begin
                 if (field==0) begin
-                    decrypting<=data_sync[0];frame_error<=|data_sync[6:1];
+                    frame_error<=|data_sync;
                     field<=1;chunk_index<=0;
-                end else if ((field==5 && chunk_index==SEED_CHUNKS-1)
-                    || (field==6 && chunk_index==MESSAGE_CHUNKS-1)
-                    || (field<5 && chunk_index==CHUNKS-1)) begin
+                end else if ((field==3 && chunk_index==SEED_CHUNKS-1)
+                    || (field==4 && chunk_index==MESSAGE_CHUNKS-1)
+                    || (field<3 && chunk_index==CHUNKS-1)) begin
                     chunk_index<=0;
-                    if (field==6) loaded<=1;
+                    if (field==4) loaded<=1;
                     else field<=field+1'b1;
                 end else chunk_index<=chunk_index+1'b1;
             end
@@ -112,10 +110,8 @@ module tt_um_rsa_fo #(
         if (rst_n && capture) case(field)
             1:modulus<={data_sync,modulus[WIDTH-1:7]};
             2:public_exponent<={data_sync,public_exponent[WIDTH-1:7]};
-            3:private_exponent<={data_sync,private_exponent[WIDTH-1:7]};
-            4:ciphertext<={data_sync,ciphertext[WIDTH-1:7]};
-            5:seed_input<=(seed_input>>7)|(seed_chunk<<(SEED_PAD-7));
-            6:payload_input<=(payload_input>>7)|(payload_chunk<<(MESSAGE_PAD-7));
+            3:seed_input<=(seed_input>>7)|(seed_chunk<<(SEED_PAD-7));
+            4:message_input<=(message_input>>7)|(message_chunk<<(MESSAGE_PAD-7));
             default:begin end
         endcase
     end
@@ -156,7 +152,7 @@ module tt_um_rsa_fo #(
         if (!engine_done && !hash_pending) output_word=0;
     end
     assign uo_out=output_word[7:0];
-    assign uio_out={1'b0,engine_done,hash_pending,rejected,output_word[11:8]};
+    assign uio_out={1'b0,engine_done,hash_pending,engine_error,output_word[11:8]};
     assign uio_oe=8'h7f;
 endmodule
 `default_nettype wire

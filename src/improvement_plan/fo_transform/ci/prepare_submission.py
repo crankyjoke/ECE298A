@@ -27,7 +27,7 @@ def manifest(original, tiles):
     result = original.replace("\r\n", "\n")
     for key, value in (
         ("title", "RSA FO experiment"),
-        ("description", "Educational hybrid FO with on-chip Keccak25-7 hashing"),
+        ("description", "Encryption-only FO demo with on-chip Keccak25-7 hashing"),
         ("top_module", "tt_um_rsa_fo"),
         ("tiles", tiles),
         ("clock_hz", 10_000_000),
@@ -44,7 +44,7 @@ def manifest(original, tiles):
     labels = {**{f"ui[{i}]": f"CHUNK[{i}]" for i in range(7)}, "ui[7]": "LOAD"}
     labels.update({f"uo[{i}]": f"WORD[{i}]" for i in range(8)})
     labels.update({f"uio[{i}]": f"WORD[{i+8}]" for i in range(4)})
-    labels.update({"uio[4]": "REJECTED", "uio[5]": "HASH_REQUEST", "uio[6]": "DONE", "uio[7]": "CONTROL"})
+    labels.update({"uio[4]": "ERROR", "uio[5]": "HASH_REQUEST", "uio[6]": "DONE", "uio[7]": "CONTROL"})
     for pin, label in labels.items():
         result, count = re.subn(rf"^  {re.escape(pin)}:.*$", f'  {pin}: "{label}"', result, flags=re.MULTILINE)
         if count != 1:
@@ -67,14 +67,15 @@ def main():
     (workspace / "docs" / "info.md").write_text(
         "# Educational RSA Fujisaki-Okamoto experiment\n\n"
         "## How it works\n\n"
-        "The 28-bit RSA core implements hybrid FO encryption and decrypt/re-encrypt verification. "
+        "The 28-bit RSA core implements the encryption half of the hybrid FO demonstration. "
         "A small on-chip Keccak-f[25] sponge produces seven-bit hashes. "
         "This uses a toy randomized RSA encoding and shortened hashes; no production security claim is made.\n\n"
         "## How to test\n\n"
         "Run src/improvement_plan/fo_transform/test/run_fo_tests.py. "
-        "The GPIO protocol, 19-load packet, and twelve-bit result words "
+        "The encryption-only GPIO protocol, 11-load packet, and twelve-bit result words "
         "are specified in src/improvement_plan/fo_transform/README.md. "
-        "REJECTED is uio[4], HASH_REQUEST is uio[5], DONE is uio[6], and CONTROL is uio[7].\n\n"
+        "ERROR is uio[4], HASH_REQUEST is uio[5], DONE is uio[6], and CONTROL is uio[7]. "
+        "No private key or decryption is present on chip.\n\n"
         "## External hardware\n\n"
         "An STM32 supplies the clock, reset, and key/input packets. Hashing is on-chip.\n",
         encoding="utf-8",
