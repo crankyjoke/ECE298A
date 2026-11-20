@@ -161,3 +161,12 @@ manifest. Use the parameter defaults in `project.v` for the selected tapeout
 width. Update the root pin descriptions and documentation for the START/NEXT
 protocol, and use the new regression instead of the old protocol testbench.
 Changing the active submission configuration is intentionally a separate step.
+
+## Fujisaki-Okamoto extension
+
+The separate `fo_transform/` directory adds a classical hybrid FO hardware
+demonstrator, with on-chip or trusted-host SHA-256, decrypt/re-encrypt
+verification, explicit rejection, its own GPIO top, and an Arty S7 wrapper.
+See `fo_transform/README.md` for its exact educational profile, new packet
+format, simulation command, and area/security limits. It does not replace this
+folder's existing `tt_um_rsa_improved` top or make the small RSA core secure.

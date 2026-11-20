@@ -1,0 +1,7 @@
+.build/
+output/
+results.xml
+gate_level_netlist.v
+fo_vectors.txt
+fo_hashes.txt
+sha_vectors.txt

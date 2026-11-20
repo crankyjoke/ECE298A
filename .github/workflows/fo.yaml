@@ -1,0 +1,101 @@
+name: FO hardware
+
+on:
+  push:
+  workflow_dispatch:
+    inputs:
+      tiles:
+        description: Tiny Tapeout area for the experimental FO build
+        type: choice
+        options: ['1x1', '1x2', '2x2']
+        default: '1x1'
+
+permissions:
+  contents: read
+
+jobs:
+  rtl:
+    name: FO RTL (${{ matrix.width }} bits)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {width: 28, short_bits: 7, random_cases: 5}
+          - {width: 42, short_bits: 14, random_cases: 12}
+          - {width: 56, short_bits: 14, random_cases: 5}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install Icarus Verilog
+        run: sudo apt-get update && sudo apt-get install -y iverilog
+      - name: Test on-chip and external SHA-256 modes
+        run: >-
+          python src/improvement_plan/fo_transform/test/run_fo_tests.py
+          --simulator icarus --width ${{ matrix.width }}
+          --seed-bits ${{ matrix.short_bits }} --coin-bits ${{ matrix.short_bits }}
+          --message-bits ${{ matrix.short_bits }} --random-cases ${{ matrix.random_cases }}
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fo-rtl-${{ matrix.width }}
+          path: |
+            src/improvement_plan/.build/fo_*/commands.log
+            src/improvement_plan/.build/fo_*/summary.json
+            src/improvement_plan/.build/fo_*/*.txt
+
+  gds:
+    name: FO GF180 (${{ inputs.tiles || '1x1' }})
+    needs: rtl
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Select FO in this build workspace
+        run: >-
+          python src/improvement_plan/fo_transform/ci/prepare_submission.py
+          --workspace "$GITHUB_WORKSPACE" --tiles "${{ inputs.tiles || '1x1' }}"
+      - name: Build FO GDS
+        uses: TinyTapeout/tt-gds-action@ttgf26a
+        with:
+          pdk: gf180mcuD
+      - name: Upload selected FO manifest
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fo-build-configuration
+          path: |
+            info.yaml
+            src/config.json
+            src/config_merged.json
+            docs/info.md
+
+  precheck:
+    name: FO physical precheck
+    needs: gds
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: TinyTapeout/tt-gds-action/precheck@ttgf26a
+
+  gate_level:
+    name: FO gate-level tests
+    needs: gds
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - uses: TinyTapeout/tt-gds-action/gl_test@ttgf26a
+        with:
+          test-dir: src/improvement_plan/fo_transform/test/gate
