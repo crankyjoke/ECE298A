@@ -5,7 +5,7 @@
 module arty_rsa_fo_top #(
     parameter integer WIDTH=28,
     parameter integer SEED_BITS=7, COIN_BITS=7, MESSAGE_BITS=7,
-    parameter integer EXTERNAL_HASH=0
+    parameter integer EXTERNAL_HASH=0, SMALL_HASH=1
 ) (
     input wire stm_clk,stm_rst_n,
     input wire [7:0] ui_in,
@@ -17,7 +17,7 @@ module arty_rsa_fo_top #(
 );
     wire [7:0] uio_out,unused_oe;
     tt_um_rsa_fo #(.WIDTH(WIDTH),.SEED_BITS(SEED_BITS),.COIN_BITS(COIN_BITS),
-        .MESSAGE_BITS(MESSAGE_BITS),.EXTERNAL_HASH(EXTERNAL_HASH)) rsa (
+        .MESSAGE_BITS(MESSAGE_BITS),.EXTERNAL_HASH(EXTERNAL_HASH),.SMALL_HASH(SMALL_HASH)) rsa (
         .clk(stm_clk),.rst_n(stm_rst_n),.ena(1'b1),
         .ui_in(ui_in),.uo_out(uo_out),.uio_in({start,7'b0}),
         .uio_out(uio_out),.uio_oe(unused_oe)

@@ -1,7 +1,7 @@
 `default_nettype none
 `timescale 1ns/1ps
 module tb_fo;
-    parameter integer WIDTH=28,SEED_BITS=7,COIN_BITS=7,MESSAGE_BITS=7,EXTERNAL_HASH=0;
+    parameter integer WIDTH=28,SEED_BITS=7,COIN_BITS=7,MESSAGE_BITS=7,EXTERNAL_HASH=0,SMALL_HASH=1;
     localparam integer HASH_BITS=(MESSAGE_BITS>COIN_BITS)?MESSAGE_BITS:COIN_BITS;
     localparam integer REQUEST_BITS=1+SEED_BITS+MESSAGE_BITS;
     localparam integer REQUEST_PAGES=(REQUEST_BITS+11)/12;
@@ -41,7 +41,7 @@ module tb_fo;
 `else
     always #5 clk=~clk;
     tt_um_rsa_fo #(.WIDTH(WIDTH),.SEED_BITS(SEED_BITS),.COIN_BITS(COIN_BITS),
-        .MESSAGE_BITS(MESSAGE_BITS),.EXTERNAL_HASH(EXTERNAL_HASH)) dut (
+        .MESSAGE_BITS(MESSAGE_BITS),.EXTERNAL_HASH(EXTERNAL_HASH),.SMALL_HASH(SMALL_HASH)) dut (
 `endif
         .clk(clk),.rst_n(rst_n),.ena(ena),.ui_in(ui_in),.uio_in(uio_in),
         .uo_out(uo_out),.uio_out(uio_out),.uio_oe(uio_oe)
@@ -109,7 +109,7 @@ module tb_fo;
                     && table_message[j]==requested_message) begin found=1;response=table_value[j];end
             end
             if (!found) $fatal(1,"Unexpected hash request kind=%d seed=%h message=%h",requested_kind,requested_seed,requested_message);
-            ticks(5); // Model a host which needs time to calculate SHA-256.
+            ticks(5); // Model a host which needs time to calculate the selected hash.
             for(j=0;j<(HASH_BITS+6)/7;j=j+1) load_chunk((response>>(j*7))&7'h7f);
             hash_calls=hash_calls+1;
         end

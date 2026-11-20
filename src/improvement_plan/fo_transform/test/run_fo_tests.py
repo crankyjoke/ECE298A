@@ -17,7 +17,7 @@ sys.path.insert(0,str(ROOT))
 from fo_reference import encrypt, decrypt, hash_value, packet_chunks
 
 SOURCES=[PARENT/name for name in ("rsa_alu.v","rsa_modmul.v","rsa_modexp.v")]
-SOURCES += [ROOT/name for name in ("sha256_block.v","fo_hash.v","rsa_adapter.v","fo_engine.v","project.v")]
+SOURCES += [ROOT/name for name in ("sha256_block.v","tiny_hash7.v","fo_hash.v","rsa_adapter.v","fo_engine.v","project.v")]
 SOURCES += [ROOT/"test"/"tb_fo.sv"]
 
 
@@ -30,7 +30,7 @@ def test_vectors(args):
         q=previous_prime(q-2)
     n=p*q
     d=pow(e,-1,(p-1)*(q-1))
-    kw=dict(seed_bits=s,coin_bits=r,message_bits=m)
+    kw=dict(seed_bits=s,coin_bits=r,message_bits=m,hash_name=args.hash_name)
     bits=max(m,r)
     hashes={}
     rows=[]
@@ -38,7 +38,7 @@ def test_vectors(args):
     def oracle(kind,seed,message=0):
         message=message if kind else 0
         key=(kind,seed,message)
-        hashes[key]=hash_value(kind,seed,message,seed_bits=s,message_bits=m,value_bits=bits)
+        hashes[key]=hash_value(kind,seed,message,seed_bits=s,message_bits=m,value_bits=bits,hash_name=args.hash_name)
         return hashes[key]
 
     def add(command,nn,ee,dd,c1,seed,payload):
@@ -114,6 +114,7 @@ def main():
     parser.add_argument("--seed-bits",type=int,default=7)
     parser.add_argument("--coin-bits",type=int,default=7)
     parser.add_argument("--message-bits",type=int,default=7)
+    parser.add_argument("--hash-name",choices=("tiny","sha256"),default="tiny")
     parser.add_argument("--external-hash",type=int,nargs="+",choices=(0,1),default=[0,1])
     parser.add_argument("--random-cases",type=int,default=12)
     args=parser.parse_args()
@@ -121,11 +122,13 @@ def main():
         parser.error("test WIDTH must be a multiple of seven in 21..63 and exceed seed+coin widths")
     if min(args.seed_bits,args.coin_bits,args.message_bits)<1 or args.random_cases<0:
         parser.error("invalid bit width or case count")
+    if args.hash_name=="tiny" and (args.seed_bits,args.coin_bits,args.message_bits)!=(7,7,7):
+        parser.error("the tiny hash requires seven-bit seed/coin/message fields")
     simulator,commands=find_simulator(args)
     rows,hashes,sha=test_vectors(args)
     summaries=[]
     for external in args.external_hash:
-        build=PARENT/".build"/f"fo_w{args.width}_s{args.seed_bits}_r{args.coin_bits}_m{args.message_bits}_ext{external}_{simulator}"
+        build=PARENT/".build"/f"fo_{args.hash_name}_w{args.width}_s{args.seed_bits}_r{args.coin_bits}_m{args.message_bits}_ext{external}_{simulator}"
         build.mkdir(parents=True,exist_ok=True)
         (build/"commands.log").write_text("")
         for name,data in (("fo_vectors.txt",rows),("fo_hashes.txt",hashes),("sha_vectors.txt",sha)):
@@ -136,7 +139,7 @@ def main():
                     seed_bits=args.seed_bits,message_bits=args.message_bits)
                 assert len(chunks)==1+4*(args.width//7)+(args.seed_bits+6)//7+(args.message_bits+6)//7
         parameters=dict(WIDTH=args.width,SEED_BITS=args.seed_bits,COIN_BITS=args.coin_bits,
-                        MESSAGE_BITS=args.message_bits,EXTERNAL_HASH=external)
+                        MESSAGE_BITS=args.message_bits,EXTERNAL_HASH=external,SMALL_HASH=int(args.hash_name=="tiny"))
         started=time.monotonic()
         if simulator=="icarus":
             run_command([commands[0],"-g2012","-Wall","-s","tb_fo",
@@ -153,7 +156,7 @@ def main():
         marker=f"FO_PASS external={external} cases={len(rows)+1} sha={len(sha)}"
         if marker not in output or re.search(r"\b(?:Fatal|FATAL|ERROR):",output):
             raise AssertionError(output)
-        summary=dict(width=args.width,external_hash=external,fo_cases=len(rows)+1,
+        summary=dict(width=args.width,hash_name=args.hash_name,external_hash=external,fo_cases=len(rows)+1,
                      sha_cases=len(sha),rejected_cases=sum(not row[-2] for row in rows),
                      hash_fixtures=len(hashes),seconds=round(time.monotonic()-started,2))
         (build/"summary.json").write_text(json.dumps(summary,indent=2)+"\n")

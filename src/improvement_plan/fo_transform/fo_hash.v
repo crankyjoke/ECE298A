@@ -4,7 +4,7 @@
 // External mode delegates only hashing, not the FO acceptance decision.
 module rsa_fo_hash #(
     parameter integer SEED_BITS=7, MESSAGE_BITS=7, VALUE_BITS=7,
-    parameter integer EXTERNAL_HASH=0
+    parameter integer EXTERNAL_HASH=0, SMALL_HASH=1
 ) (
     input wire clk, rst_n, ena,
     input wire request_valid, request_kind,
@@ -30,6 +30,19 @@ module rsa_fo_hash #(
         assign response_valid = external_response_valid;
         assign response_value = external_response_value;
         assign external_response_ready = response_ready && ena;
+    end else if(SMALL_HASH != 0) begin: tiny_service
+        rsa_fo_tiny_hash7 tiny (
+            .clk(clk),.rst_n(rst_n),.ena(ena),
+            .request_valid(request_valid),.request_kind(request_kind),
+            .request_seed(request_seed),.request_message(request_message),
+            .request_ready(request_ready),.response_valid(response_valid),
+            .response_value(response_value),.response_ready(response_ready)
+        );
+        assign external_request_valid=0;
+        assign external_request_kind=0;
+        assign external_request_seed=0;
+        assign external_request_message=0;
+        assign external_response_ready=0;
     end else begin: hardware_service
         localparam [1:0] IDLE=0, RUNNING=1, RESPONSE=2;
         reg [1:0] state;
@@ -85,6 +98,8 @@ module rsa_fo_hash #(
     end endgenerate
 `ifndef SYNTHESIS
     initial begin
+        if(SMALL_HASH && (SEED_BITS!=7 || MESSAGE_BITS!=7 || VALUE_BITS!=7))
+            $fatal(1,"Keccak25-7 requires seven-bit seed, message and digest");
         if (SEED_BITS<1 || MESSAGE_BITS<1 || VALUE_BITS<1 || VALUE_BITS>256
             || 4+SEED_BYTES+MESSAGE_BYTES>55)
             $fatal(1,"FO hash inputs must fit one SHA-256 padded block");

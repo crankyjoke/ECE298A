@@ -5,7 +5,7 @@
 module rsa_fo_engine #(
     parameter integer WIDTH=28, WORD_BITS=7,
     parameter integer SEED_BITS=7, COIN_BITS=7, MESSAGE_BITS=7,
-    parameter integer EXTERNAL_HASH=0,
+    parameter integer EXTERNAL_HASH=0, SMALL_HASH=1,
     parameter integer HASH_BITS=(MESSAGE_BITS>COIN_BITS)?MESSAGE_BITS:COIN_BITS
 ) (
     input wire clk, rst_n, ena, clear, start, decrypt,
@@ -47,7 +47,7 @@ module rsa_fo_engine #(
     wire rsa_take=ena && ((state==DEC_WAIT)||(state==ENC_WAIT));
 
     rsa_fo_hash #(.SEED_BITS(SEED_BITS),.MESSAGE_BITS(MESSAGE_BITS),
-        .VALUE_BITS(HASH_BITS),.EXTERNAL_HASH(EXTERNAL_HASH)) hashes (
+        .VALUE_BITS(HASH_BITS),.EXTERNAL_HASH(EXTERNAL_HASH),.SMALL_HASH(SMALL_HASH)) hashes (
         .clk(clk),.rst_n(local_rst_n),.ena(ena),
         .request_valid(hash_req),.request_kind(hash_kind),
         .request_seed(sigma),.request_message(hash_kind?candidate:{MESSAGE_BITS{1'b0}}),.request_ready(hash_ready),

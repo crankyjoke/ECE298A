@@ -1,11 +1,11 @@
 `default_nettype none
 
 // GPIO top for the experimental hybrid FO profile. See this folder's README.
-// Default offloads SHA-256 to a trusted STM32; EXTERNAL_HASH=0 includes SHA RTL.
+// Default hashes on-chip with Keccak25-7; SMALL_HASH=0 selects SHA-256.
 module tt_um_rsa_fo #(
     parameter integer WIDTH=28, WORD_BITS=7,
     parameter integer SEED_BITS=7, COIN_BITS=7, MESSAGE_BITS=7,
-    parameter integer EXTERNAL_HASH=1
+    parameter integer EXTERNAL_HASH=0, SMALL_HASH=1
 ) (
     input wire [7:0] ui_in,
     output wire [7:0] uo_out,
@@ -68,7 +68,8 @@ module tt_um_rsa_fo #(
     integer page;
 
     rsa_fo_engine #(.WIDTH(WIDTH),.WORD_BITS(WORD_BITS),.SEED_BITS(SEED_BITS),
-        .COIN_BITS(COIN_BITS),.MESSAGE_BITS(MESSAGE_BITS),.EXTERNAL_HASH(EXTERNAL_HASH)) engine (
+        .COIN_BITS(COIN_BITS),.MESSAGE_BITS(MESSAGE_BITS),.EXTERNAL_HASH(EXTERNAL_HASH),
+        .SMALL_HASH(SMALL_HASH)) engine (
         .clk(clk),.rst_n(rst_n),.ena(ena),.clear(clear_engine),.start(engine_start),
         .decrypt(decrypting),.modulus(modulus),
         .public_exponent(malformed?{WIDTH{1'b0}}:public_exponent),

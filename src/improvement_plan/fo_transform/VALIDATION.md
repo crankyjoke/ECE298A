@@ -4,6 +4,40 @@ Validated on 2026-11-19 using Vivado Simulator and Vivado synthesis 2021.2.
 These checks validate the implemented educational profile; they are not a
 security proof, cryptographic certification, GF180 physical flow, or board test.
 
+## Current compact hash profile
+
+The default is now on-chip **Keccak25-7**, using the full 12-round
+Keccak-f[25] permutation, a seven-bit rate, 18-bit capacity, pad10*1, and
+seven-bit output. This is a repository-specific educational profile. The
+results in the later sections describe the earlier SHA-256 configurations.
+
+Vivado Simulator passed **16,513 compact-hash checks**: all 16,384 H(seed,m)
+pairs, all 128 G seeds with varying ignored message inputs, and a repeat
+after reset. The bench also checks captured request inputs, exact 24/36-cycle
+permutation latency, enable pauses, output backpressure, and reset during work.
+The independent Python sponge uses array equations and an LFSR-generated
+round constant sequence; hardware uses packed bits and a constant decoder.
+All 128 output values occur across H's exhaustive input set (102 to 157
+inputs per output). These distribution observations are not a security proof.
+
+Both on-chip and external compact-hash FO modes passed **110 FO cases**,
+including 48 rejections, with the existing 20 SHA-block checks also passing.
+The optional 28-bit SHA-256 profile was rerun in both modes with 68 FO cases
+and 20 SHA checks passing.
+
+Vivado synthesis for xc7s25csga324-1 completed with zero errors, critical
+warnings, or inferred latches:
+
+| Configuration | LUTs | Flip-flops |
+| --- | --- | --- |
+| Compact hash alone | 67 | 43 |
+| 28-bit FO, on-chip compact hash | 451 | 383 |
+| 28-bit FO, on-chip SHA-256 | 919 | 868 |
+
+Reports are in `.build/fo_synthesis_hash7/`. These are FPGA resources;
+GF180 tile fit must be measured separately. The earlier 112.272% result
+below used external hashing, with no on-chip SHA engine to remove.
+
 ## GPIO simulation
 
 | RSA width | Seed/coin/message bits | Hash mode | FO cases | Rejected cases | SHA checks |
@@ -43,9 +77,9 @@ the six configurations: 60 checks, not 60 distinct messages.
 Commands are listed in README.md. The additional parameter runs used:
 
 ```text
---width 28 --seed-bits 7 --coin-bits 7 --message-bits 7 --random-cases 5
---width 42 --seed-bits 14 --coin-bits 14 --message-bits 14 --random-cases 12
---width 56 --seed-bits 14 --coin-bits 14 --message-bits 14 --random-cases 5
+--hash-name sha256 --width 28 --seed-bits 7 --coin-bits 7 --message-bits 7 --random-cases 5
+--hash-name sha256 --width 42 --seed-bits 14 --coin-bits 14 --message-bits 14 --random-cases 12
+--hash-name sha256 --width 56 --seed-bits 14 --coin-bits 14 --message-bits 14 --random-cases 5
 ```
 
 Logs/vectors/summary JSON are under the parent's ignored `.build/` directory,

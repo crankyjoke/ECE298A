@@ -13,6 +13,7 @@ SOURCES = [
     "improvement_plan/rsa_modmul.v",
     "improvement_plan/rsa_modexp.v",
     "improvement_plan/fo_transform/sha256_block.v",
+    "improvement_plan/fo_transform/tiny_hash7.v",
     "improvement_plan/fo_transform/fo_hash.v",
     "improvement_plan/fo_transform/rsa_adapter.v",
     "improvement_plan/fo_transform/fo_engine.v",
@@ -26,7 +27,7 @@ def manifest(original, tiles):
     result = original.replace("\r\n", "\n")
     for key, value in (
         ("title", "RSA FO experiment"),
-        ("description", "Educational hybrid FO with trusted STM32 hashing"),
+        ("description", "Educational hybrid FO with on-chip Keccak25-7 hashing"),
         ("top_module", "tt_um_rsa_fo"),
         ("tiles", tiles),
         ("clock_hz", 10_000_000),
@@ -67,18 +68,18 @@ def main():
         "# Educational RSA Fujisaki-Okamoto experiment\n\n"
         "## How it works\n\n"
         "The 28-bit RSA core implements hybrid FO encryption and decrypt/re-encrypt verification. "
-        "SHA-256 is supplied by a trusted STM32 through the hash-service GPIO protocol. "
+        "A small on-chip Keccak-f[25] sponge produces seven-bit hashes. "
         "This uses a toy randomized RSA encoding and shortened hashes; no production security claim is made.\n\n"
         "## How to test\n\n"
         "Run src/improvement_plan/fo_transform/test/run_fo_tests.py. "
-        "The GPIO protocol, 19-load packet, twelve-bit result words, and hash-service procedure "
+        "The GPIO protocol, 19-load packet, and twelve-bit result words "
         "are specified in src/improvement_plan/fo_transform/README.md. "
         "REJECTED is uio[4], HASH_REQUEST is uio[5], DONE is uio[6], and CONTROL is uio[7].\n\n"
         "## External hardware\n\n"
-        "A trusted STM32 supplies the clock, reset, key/input packets, and SHA-256 service.\n",
+        "An STM32 supplies the clock, reset, and key/input packets. Hashing is on-chip.\n",
         encoding="utf-8",
     )
-    print(f"Selected 28-bit tt_um_rsa_fo, trusted external hashing, {args.tiles}, 10 MHz target")
+    print(f"Selected 28-bit tt_um_rsa_fo, on-chip Keccak25-7, {args.tiles}, 10 MHz target")
 
 
 if __name__ == "__main__":

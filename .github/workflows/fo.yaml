@@ -15,16 +15,17 @@ permissions:
 
 jobs:
   rtl:
-    name: FO RTL (${{ matrix.width }} bits)
+    name: FO RTL (${{ matrix.width }} bits, ${{ matrix.hash }})
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
         include:
-          - {width: 28, short_bits: 7, random_cases: 5}
-          - {width: 42, short_bits: 14, random_cases: 12}
-          - {width: 56, short_bits: 14, random_cases: 5}
+          - {width: 28, short_bits: 7, random_cases: 12, hash: tiny}
+          - {width: 28, short_bits: 7, random_cases: 5, hash: sha256}
+          - {width: 42, short_bits: 14, random_cases: 12, hash: sha256}
+          - {width: 56, short_bits: 14, random_cases: 5, hash: sha256}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -32,26 +33,45 @@ jobs:
           python-version: '3.11'
       - name: Install Icarus Verilog
         run: sudo apt-get update && sudo apt-get install -y iverilog
-      - name: Test on-chip and external SHA-256 modes
+      - name: Test on-chip and external hash modes
         run: >-
           python src/improvement_plan/fo_transform/test/run_fo_tests.py
           --simulator icarus --width ${{ matrix.width }}
           --seed-bits ${{ matrix.short_bits }} --coin-bits ${{ matrix.short_bits }}
           --message-bits ${{ matrix.short_bits }} --random-cases ${{ matrix.random_cases }}
+          --hash-name ${{ matrix.hash }}
       - name: Upload test logs
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: fo-rtl-${{ matrix.width }}
+          name: fo-rtl-${{ matrix.width }}-${{ matrix.hash }}
           include-hidden-files: true
           path: |
             src/improvement_plan/.build/fo_*/commands.log
             src/improvement_plan/.build/fo_*/summary.json
             src/improvement_plan/.build/fo_*/*.txt
 
+  hash7:
+    name: Exhaustive seven-bit hash
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: sudo apt-get update && sudo apt-get install -y iverilog
+      - run: python src/improvement_plan/fo_transform/test/run_hash7_tests.py --simulator icarus
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: fo-hash7-exhaustive
+          include-hidden-files: true
+          path: src/improvement_plan/.build/fo_hash7_icarus/
+
   gds:
     name: FO GF180 (${{ inputs.tiles || '1x1' }})
-    needs: rtl
+    needs: [rtl, hash7]
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:

@@ -165,7 +165,7 @@ Changing the active submission configuration is intentionally a separate step.
 ## Fujisaki-Okamoto extension
 
 The separate `fo_transform/` directory adds a classical hybrid FO hardware
-demonstrator, with on-chip or trusted-host SHA-256, decrypt/re-encrypt
+demonstrator, with a compact on-chip seven-bit hash, optional SHA-256, decrypt/re-encrypt
 verification, explicit rejection, its own GPIO top, and an Arty S7 wrapper.
 See `fo_transform/README.md` for its exact educational profile, new packet
 format, simulation command, and area/security limits. It does not replace this

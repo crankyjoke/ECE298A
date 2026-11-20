@@ -17,21 +17,29 @@ constant-time execution and complete key-register zeroization are not provided.
 The hybrid construction pattern is described in the
 [FO H-oracle instantiation paper, section 5.3](https://iacr.org/archive/crypto2005/36210406/36210406.pdf)
 and the [original Fujisaki-Okamoto paper](https://doi.org/10.1007/3-540-48405-1_34).
-The hardware SHA-256 rounds follow the algorithm in
-[FIPS 180-4](https://csrc.nist.gov/pubs/fips/180-4/upd1/final).
+The default small hash uses the full twelve-round
+[Keccak-f[25] permutation](https://keccak.team/keccakp.html). The optional
+SHA-256 rounds follow [FIPS 180-4](https://csrc.nist.gov/pubs/fips/180-4/upd1/final).
 The domain tags, shortened lengths, and RSA encoding below are this
 repository's explicit demonstration choices.
 
 ## Exact profile
 
-Default parameters: WIDTH=28, SEED_BITS=7, COIN_BITS=7, MESSAGE_BITS=7.
-Let `BE(x,b)` encode x in `ceil(b/8)` big-endian bytes with unused high bits zero.
-Let `low_b` select the least-significant b bits of the SHA-256 digest integer.
+Default parameters: WIDTH=28, SEED_BITS=7, COIN_BITS=7, MESSAGE_BITS=7,
+SMALL_HASH=1, EXTERNAL_HASH=0. The hash profile is named **Keccak25-7** here;
+it is a repository-specific educational sponge, not SHA-3 or SHAKE.
+Let `bits7(x)` be the seven bits of x, least-significant bit first.
 
 ```text
-G(sigma)    = low_MESSAGE_BITS(SHA256("FOG1" || BE(sigma, SEED_BITS)))
-H(sigma,m)  = low_COIN_BITS(SHA256("FOH1" || BE(sigma, SEED_BITS)
-                                             || BE(m, MESSAGE_BITS)))
+G(sigma)    = K25(0 || bits7(sigma))
+H(sigma,m)  = K25(1 || bits7(sigma) || bits7(m))
+
+K25(M):
+    append pad10*1 to make the bit length a multiple of seven
+    S = 0                        # 25-bit state, rate 7, capacity 18
+    for each seven-bit block B, first input bit at B bit zero:
+        S = Keccak-f[25](S XOR B) # all 12 rounds; B affects state bits 0..6
+    return S & 0x7f              # first seven squeezed bits
 
 Encrypt(N,e,m,sigma):
     r  = H(sigma,m)
@@ -62,27 +70,39 @@ exponent d for decryption. Hardware does not validate primality or e/d key
 consistency. The caller must enforce those requirements. Encoded operands
 must fit WIDTH, so `SEED_BITS+COIN_BITS < WIDTH`.
 
+The small hash has only 128 possible outputs. Its collision/preimage space
+is deliberately tiny, and it does not establish FO security. Unlike a CRC,
+the permutation includes nonlinear mixing, but this profile is still only a
+demonstration. Changing the hash changes ciphertexts: the previous SHA-256
+profile and this profile must not be mixed between encryption and decryption.
+
 ## Hash configurations and area
 
-- `tt_um_rsa_fo` defaults to **EXTERNAL_HASH=1**. The trusted STM32 computes
-  SHA-256 in response to requests from the chip. The FO controller and both
-  RSA operations remain in hardware. In this mode the STM32 sees recovered
-  seeds and candidate plaintext through the hash-service interface and is
-  inside the trusted cryptographic boundary.
-- `arty_rsa_fo_top` defaults to **EXTERNAL_HASH=0**. The same reusable SHA-256
-  engine performs both hashes on the FPGA, with no host hash requests.
+- `tt_um_rsa_fo` and `arty_rsa_fo_top` default to **SMALL_HASH=1,
+  EXTERNAL_HASH=0**. Both G and H run on chip using the shared compact hash.
+  Its sponge state is 25 bits, with 14 bits for remaining input and small
+  counters. G takes 24 permutation cycles; H takes 36. The module captures
+  its input on acceptance and holds its output until consumed.
+- **SMALL_HASH=0** selects the previous SHA-256 profile, truncating its digest
+  to `max(MESSAGE_BITS,COIN_BITS)` low bits. G hashes `"FOG1" || BE(seed)`;
+  H hashes `"FOH1" || BE(seed) || BE(message)`. BE encodes fixed-width integers
+  in `ceil(bits/8)` big-endian bytes. Select this mode for 14-bit fields.
+- **EXTERNAL_HASH=1** offloads the selected hash to a trusted STM32. It must
+  implement the same hash profile as the Python reference. The STM32 sees
+  recovered seeds and candidate plaintext on this interface and is inside
+  the trusted cryptographic boundary. FO acceptance and RSA remain on chip.
 - The native `rsa_fo_engine` also defaults to internal hashing and exposes a
   parallel interface for other integrations. Its input operands must remain
   stable through DONE. `clear` aborts/reset-arms its internal services.
 
-The SHA block engine consumes one already-padded 512-bit block, performs 64
+The optional SHA block engine consumes one already-padded 512-bit block, performs 64
 rounds, and starts from the standard IV on every request. The hash formatter
 supports inputs of at most 55 bytes; it does not implement multi-block SHA.
 Its 16-word message schedule and eight working state words alone contain
 768 storage bits, before its 256-bit result and the RSA/FO controller.
-**An on-chip hash engine cannot be assumed to fit the remaining half of a
-Tiny Tapeout tile. External hashing also adds control and storage; GF180
-synthesis and physical checks are still required to establish any tile fit.**
+The old 112.272% area result used external hashing and contained no SHA-256
+engine. The smaller on-chip hash therefore requires its own physical build;
+replacing SHA alone does not establish a one-tile fit.
 
 ## GPIO protocol: new packet format
 
@@ -152,7 +172,7 @@ request = sigma | (message << SEED_BITS)
 ```
 
 `kind=0` selects G and message is zero. `kind=1` selects H.
-Compute the corresponding SHA-256 using the exact domain/byte encoding above,
+Compute the selected hash using its exact domain/bit or byte encoding above,
 and return its low `max(MESSAGE_BITS,COIN_BITS)` bits using LOAD pulses with
 seven-bit chunks, least-significant first: **one LOAD pulse by default**.
 No separate CONTROL acknowledgement is needed for a hash response. The request
@@ -173,6 +193,7 @@ Design Sources are:
 ../rsa_modmul.v
 ../rsa_modexp.v
 sha256_block.v
+tiny_hash7.v
 fo_hash.v
 rsa_adapter.v
 fo_engine.v
@@ -194,21 +215,24 @@ From the repository root, the tested simulator command is:
 python src/improvement_plan/fo_transform/test/run_fo_tests.py --simulator vivado --vivado-bin "D:/Xillinx/Vivado/2021.2/bin"
 ```
 
-This exercises the actual GPIO hardware with both hash modes and checks SHA
-against Python hashlib. The runner also supports Icarus Verilog on PATH:
+This exercises the GPIO hardware with internal and external Keccak25-7.
+Select `--hash-name sha256` for the previous hash. SHA block checks against
+hashlib are also retained. The runner supports Icarus Verilog on PATH:
 
 ```sh
 python src/improvement_plan/fo_transform/test/run_fo_tests.py --simulator icarus
+python src/improvement_plan/fo_transform/test/run_hash7_tests.py --simulator icarus
 ```
 
 The test files are simulation-only. Vectors, logs, snapshots, and result JSON
 go under the parent's ignored `.build/` directory. Do not add testbench or
 Python files to Design Sources. `test/check_synthesis.tcl` optionally checks
 both Arty hash configurations and produces FPGA resource reports under
-`.build/fo_synthesis_w28/`. It does not establish Tiny Tapeout area/timing.
+`.build/fo_synthesis_hash7/`. It compares both on-chip hashes and also synthesizes
+the compact hash alone. It does not establish Tiny Tapeout area/timing.
 
 To select the Tiny Tapeout design later, set the manifest top to
-`tt_um_rsa_fo`, list the three parent RSA arithmetic files plus the five FO
+`tt_um_rsa_fo`, list the three parent RSA arithmetic files plus the six FO
 files (excluding the Arty wrapper), update the pin descriptions to this
 protocol, and run the GF180 flow. This extension does not change that active
 submission configuration automatically.
@@ -217,9 +241,12 @@ See `VALIDATION.md` for the completed simulation and synthesis checks.
 
 ## GitHub Actions
 
-The separate **FO hardware** workflow tests 28-, 42-, and 56-bit configurations
-with Icarus and both hash modes. After those pass, it attempts a GF180 physical
-build of the default 28-bit external-hash top in a 1x1 tile. This build selects the FO source
+The separate **FO hardware** workflow tests 28-bit Keccak25-7 and the previous
+28-, 42-, and 56-bit SHA-256 configurations, with internal and external hashing.
+A separate job exhausts all 16,384 H inputs and all 128 G seeds, including
+pause/backpressure, input capture, and reset tests. After those pass, it attempts
+a GF180 physical build of the default 28-bit on-chip-hash top in a 1x1 tile.
+This build selects the FO source
 list and pin map only in the runner workspace; the committed root info.yaml
 continues to select the original RSA core. Precheck and a dedicated FO GPIO
 gate-level regression follow a successful physical build.
@@ -229,7 +256,7 @@ utilization in 1x1. The default has therefore been reduced to 28-bit RSA and
 7-bit seed/coin/message fields, retaining the 1x1 target. A manual workflow run
 can select a larger tile for separate experiments. The original submission's
 root manifest remains unchanged.
-The [28-bit 1x1 attempt](https://github.com/crankyjoke/ECE298A/actions/runs/44660147412)
+The [previous 28-bit external-hash 1x1 attempt](https://github.com/crankyjoke/ECE298A/actions/runs/44660147412)
 also passed RTL tests but failed placement at **112.272% utilization**. The
 reduction saves area but still does not fit one tile; further architectural
 area reductions or a larger allocation are required.
