@@ -7,8 +7,8 @@ and produces the ciphertext pair `(c1,c2)`. Decryption and ciphertext verificati
 run on the receiver in software. There is no private-key input, RSA decryption,
 plaintext recovery, or re-encryption comparison in this hardware.
 
-The original RSA tops and root Tiny Tapeout submission manifest are unchanged.
-This extension is a separate top named `tt_um_rsa_fo`.
+The active Tiny Tapeout submission now selects `tt_um_rsa_fo`. The original
+RSA RTL remains available, with its old test setup in `test/Makefile.legacy`.
 
 This is a demonstration, not standardized RSA padding or a proven-secure
 RSA-FO scheme. The RSA modulus is 28 bits and seeds/coins/messages/hashes are
@@ -187,15 +187,20 @@ GF180 area or timing.
 
 ## Tiny Tapeout builds
 
-The dedicated **FO hardware** workflow tests encryption-only configurations at
+The normal **gds** workflow now builds the active `tt_um_rsa_fo` submission,
+runs physical precheck and FO gate-level tests, and publishes its GDS viewer.
+The normal **test** workflow runs the FO GPIO and exhaustive hash regressions;
+it also retains a standalone check of the original RSA core.
+
+The manually dispatched **FO hardware** workflow tests encryption-only configurations at
 28 bits with Keccak25-7, and 28/42/56 bits with SHA-256, using internal and
 external services. It also runs the exhaustive hash check. It then attempts the
 default on-chip-hash design in a 1x1 GF180 tile, followed by precheck and a
 GPIO gate-level regression if hardening succeeds.
 
-The workflow selects the FO sources and pin map in its disposable workspace;
-the checked-in root info.yaml continues to select the original RSA-only top.
-Manual workflow dispatch can choose a larger tile for separate experiments.
+The experimental workflow refreshes the FO sources and pin map in its disposable
+workspace and can select a larger tile. The checked-in root info.yaml now uses
+the optimized 28-bit FO design in 1x1, matching the normal GDS build.
 The older encrypt/decrypt design exceeded one tile at 125.772% utilization
 with the compact hash on chip. The
 [encryption-only run](https://github.com/crankyjoke/ECE298A/actions/runs/44663974041)

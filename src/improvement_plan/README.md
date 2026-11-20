@@ -3,7 +3,9 @@
 This is an independent implementation of `result = message**exponent mod N`.
 The default is **42-bit N, 42-bit message, and 42-bit exponent**. All RTL module
 names are different from the original design, so both versions can coexist.
-The root `info.yaml`, original RTL, and original test Makefile are unchanged.
+The original RTL is retained. The root submission now selects the optimized
+encryption-only FO design in `fo_transform/`; the former root test Makefile is
+preserved as `test/Makefile.legacy`.
 
 The multiplier shares one seven-bit adder/subtractor. Additions and reductions
 take several cycles, with carry propagated between words. Reduction subtracts N

@@ -11,3 +11,8 @@ test/sim_build
 test/__pycache__/
 test/results.xml
 test/gate_level_netlist.v
+test/.build/
+test/output/
+test/fo_vectors.txt
+test/fo_hashes.txt
+test/sha_vectors.txt

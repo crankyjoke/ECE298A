@@ -4,6 +4,20 @@ Validated on 2026-11-19 using Vivado Simulator and Vivado synthesis 2021.2.
 These checks validate the implemented educational profile; they are not a
 security proof, cryptographic certification, GF180 physical flow, or board test.
 
+## Main submission selection
+
+On 2026-11-20, the root manifest was switched from `tt_um_example` to the
+optimized `tt_um_rsa_fo`, keeping the 1x1 allocation. The main GDS workflow
+now uses the FO gate regression and publishes the FO viewer. The main RTL
+test entry point runs the FO GPIO and exhaustive hash regressions; its new
+JUnit wrapper passed locally with 90 FO cases and 16,513 hash checks.
+The old Makefile and project proposal are retained as `test/Makefile.legacy`
+and `docs/legacy_rsa_proposal.md`.
+
+The earlier main GDS run displayed **56.400% placement utilization** because
+it selected the original RSA core; this was separate from the optimized FO
+build described below. The normal GDS workflow will verify the active selection.
+
 ## Current area-optimized encryption-only profile
 
 The optimized exponentiator uses left-to-right square-and-multiply and reads

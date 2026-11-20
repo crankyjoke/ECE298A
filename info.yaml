@@ -1,33 +1,36 @@
 # Tiny Tapeout project information
 project:
-  title:        "test"      # Project title
+  title: "RSA FO encryptor"
   author:       "Derek F"      # Your name
   discord:      "test"      # Your discord username, for communication and automatically assigning you a Tapeout role (optional)
-  description:  "test"      # One line description of what your project does
+  description: "Encryption-only FO demo with on-chip Keccak25-7 hashing"
   language:     "Verilog" # other examples include SystemVerilog, Amaranth, VHDL, etc
-  clock_hz:     0       # Clock frequency in Hz (or 0 if not applicable)
+  clock_hz: 10000000
 
   # How many tiles your design occupies? A single tile is about 340x160 uM.
-  tiles: "1x1"          # Valid values: 1x1, 1x2, 2x2, 3x2, 4x2, 3x4 or 4x4
+  tiles: "1x1"
 
   # Your top module name must start with "tt_um_". Make it unique by including your github username:
-  top_module:  "tt_um_example"
+  top_module: "tt_um_rsa_fo"
 
   # List your project's source files here.
   # Source files must be in ./src and you must list each source file separately, one per line.
-  # Don't forget to also update `PROJECT_SOURCES` in test/Makefile.
+  # Active RTL tests are delegated by test/Makefile to the FO test runner.
   source_files:
-    - "project.v"
-    - "rsa_loader.v"
-    - "rsa_modexp.v"
-    - "rsa_modmul.v"
-    - "rsa_alu.v"
+    - "improvement_plan/rsa_alu.v"
+    - "improvement_plan/rsa_modmul.v"
+    - "improvement_plan/fo_transform/sha256_block.v"
+    - "improvement_plan/fo_transform/tiny_hash7.v"
+    - "improvement_plan/fo_transform/fo_hash.v"
+    - "improvement_plan/fo_transform/rsa_adapter.v"
+    - "improvement_plan/fo_transform/fo_engine.v"
+    - "improvement_plan/fo_transform/project.v"
 
 # The pinout of your project. Leave unused pins blank. DO NOT delete or add any pins.
 # This section is for the datasheet/website. Use descriptive names (e.g., RX, TX, MOSI, SCL, SEG_A, etc.).
 pinout:
   # Inputs
-  ui[0]: "CHUNK[0] / PAGE_SELECT"
+  ui[0]: "CHUNK[0]"
   ui[1]: "CHUNK[1]"
   ui[2]: "CHUNK[2]"
   ui[3]: "CHUNK[3]"
@@ -37,24 +40,24 @@ pinout:
   ui[7]: "LOAD"
 
   # Outputs
-  uo[0]: "RESULT_PAGE[0]"
-  uo[1]: "RESULT_PAGE[1]"
-  uo[2]: "RESULT_PAGE[2]"
-  uo[3]: "RESULT_PAGE[3]"
-  uo[4]: "RESULT_PAGE[4]"
-  uo[5]: "RESULT_PAGE[5]"
-  uo[6]: "RESULT_PAGE[6]"
-  uo[7]: "RESULT_PAGE[7]"
+  uo[0]: "WORD[0]"
+  uo[1]: "WORD[1]"
+  uo[2]: "WORD[2]"
+  uo[3]: "WORD[3]"
+  uo[4]: "WORD[4]"
+  uo[5]: "WORD[5]"
+  uo[6]: "WORD[6]"
+  uo[7]: "WORD[7]"
 
   # Bidirectional pins
-  uio[0]: "RESULT_PAGE[8]"
-  uio[1]: "RESULT_PAGE[9]"
-  uio[2]: "RESULT_PAGE[10]"
-  uio[3]: "RESULT_PAGE[11]"
-  uio[4]: "RESULT_PAGE[12]"
-  uio[5]: "RESULT_PAGE[13]"
+  uio[0]: "WORD[8]"
+  uio[1]: "WORD[9]"
+  uio[2]: "WORD[10]"
+  uio[3]: "WORD[11]"
+  uio[4]: "ERROR"
+  uio[5]: "HASH_REQUEST"
   uio[6]: "DONE"
-  uio[7]: "START"
+  uio[7]: "CONTROL"
 
 # Do not change!
 yaml_version: 6

@@ -23,7 +23,7 @@ jobs:
         shell: bash
         run: pip install -r test/requirements.txt
 
-      - name: Run standalone RTL testbench
+      - name: Test retained legacy RSA core
         working-directory: test
         run: |
           mkdir -p sim_build/standalone

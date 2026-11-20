@@ -1,93 +1,24 @@
-<!---
-
-This file is used to generate your project datasheet. Please fill in the information below and delete any unused
-sections.
-
-You can also include images in this folder and reference them in the markdown. Each image must be less than
-512 kb in size, and the combined size of all images must be less than 1 MB.
--->
-# RSA Encryptor
+# RSA FO encryption-only accelerator
 
 ## How it works
-Input: 14-bit unsigned integers: $m$ (message to encrypt), $e$ (encryption exponent), 28-bit unsigned integer $N$ (modular)
 
-Output : 28-bit unsigned integer $m^{e} \: (mod\:pq)$
+The 28-bit RSA core implements the encryption half of the hybrid FO demonstration. A small on-chip Keccak-f[25] sponge produces seven-bit hashes. The public modulus/exponent are 28 bits; messages, seeds, coins, and hash outputs are seven bits. This uses a toy randomized RSA encoding and shortened hashes; no production security claim is made. The host generates keys and fresh random seeds. Decryption runs on the receiver, with no private key on chip.
 
-Pin map: 
-
-
-
-
-
-| Tiny Tapeout pin | Direction | Purpose |
-|---|---|---|
-| `clk` | Input | Circuit clock |
-| `rst_n` | Input | Active-low reset; returns loading to the first \(N\) chunk |
-| `ena` | Input | Design enable |
-| `ui_in[6:0]` | Input | 7-bit input chunk; bit 0 selects the result page after completion |
-| `ui_in[7]` | Input | Load strobe |
-| `uio[7]` | Input | Start strobe |
-| `uio[6]` | Output | `done`: result is valid when high |
-| `uio[5:0]` | Output | Output page bits `[13:8]` |
-| `uo_out[7:0]` | Output | Output page bits `[7:0]` |
+For seed s and message m, the chip computes r=H(s,m), x=(s<<7)|r, c1=pow(x,e,N), and c2=m XOR G(s). G and H use the domain-separated Keccak25-7 profile specified in src/improvement_plan/fo_transform/README.md.
 
 ## How to test
 
-Use unsigned inputs with `1 < N < 2^28`, `0 <= e < 2^14`, and
-`0 <= m < min(N, 2^14)`. Keep the design selected (`ena = 1`) and provide
-the external clock throughout the transaction.
+Use N >= 2^14, N < 2^28, 0 < e < 2^28, and seven-bit seed/message values. Supply a valid RSA public key; hardware does not check primality. Keep ena=1 during transfers.
 
-1. Set `LOAD = ui_in[7]` and `START = uio_in[7]` low. Hold `rst_n = 0`
-   for four clock cycles, then release it and wait another four cycles.
-2. Load the following eight 7-bit chunks on `ui_in[6:0]`, least-significant
-   chunk first:
+1. Hold LOAD=ui[7] and CONTROL=uio[7] low. Assert reset for four clocks, release it, and wait four clocks.
+2. Send 11 seven-bit chunks on ui[6:0]: header=0, four chunks of N, four chunks of e, one seed, one message. Multi-chunk values are least-significant chunk first. For each chunk hold data with LOAD low for four clocks, LOAD high for four clocks, then low for four clocks.
+3. Pulse CONTROL high for four clocks and low for four clocks, then wait for DONE=uio[6].
+4. ERROR=uio[4] means a malformed packet or checked key parameter; all result words are zero on error. HASH_REQUEST=uio[5] stays zero in the default on-chip-hash design.
+5. Read word=((uio&0x0f)<<8)|uo. Read three twelve-bit words, least-significant first, pulsing CONTROL between words. Reconstruct packed=word0|(word1<<12)|(word2<<24), c1=packed&((1<<28)-1), and c2=(packed>>28)&127.
+6. Compare with fo_reference.py encrypt(), or decrypt and verify on the software receiver. The first LOAD of the next packet begins a new transaction without reset. Frames do not overlap.
 
-   | LOAD pulse | Data |
-   | --- | --- |
-   | 1 | `N[6:0]` |
-   | 2 | `N[13:7]` |
-   | 3 | `N[20:14]` |
-   | 4 | `N[27:21]` |
-   | 5 | `e[6:0]` |
-   | 6 | `e[13:7]` |
-   | 7 | `m[6:0]` |
-   | 8 | `m[13:7]` |
-
-   For each chunk, set the data with `LOAD` low and wait four clock cycles.
-   Keep the data stable, raise `LOAD` for four cycles, then lower it for
-   four cycles before sending the next chunk. These intervals allow the
-   input synchronizers to capture the data and strobe.
-3. After the eighth load, keep `LOAD` low. Raise `START` for four clock
-   cycles, then lower it. Poll `DONE = uio_out[6]`; the functional tests
-   allow up to 6000 cycles for completion.
-4. Keep `LOAD` and `START` low. Set `ui_in[0] = 0`, wait four clock cycles,
-   and read the low result page. Set `ui_in[0] = 1`, wait four cycles,
-   and read the high result page. Read each 14-bit page as:
-
-   ```text
-   page = ((uio_out & 0x3F) << 8) | uo_out
-   ciphertext = low_page | (high_page << 14)
-   ```
-
-5. Compare the ciphertext against software `pow(m, e, N)`. `DONE` and
-   the completed result remain valid until reset. Reset before loading
-   another transaction.
-
-For a known example, use `N = 3233`, `e = 17`, and `m = 65`. The eight
-input chunks are `33, 25, 0, 0, 17, 0, 65, 0`; the expected ciphertext is
-`2790`. With `e = 0`, the expected result is `1` for every valid modulus.
-
-The bidirectional pin directions are fixed by `uio_oe = 0x7F`: bits 0
-through 6 are outputs, and bit 7 is the START input. The host must only
-drive bit 7 of this bus.
-
-For automated RTL simulation, install Icarus Verilog and the Python
-packages in `test/requirements.txt`, then run `make` in the `test/`
-directory. The cocotb tests compare 10 fixed and 200 reproducible random
-transactions against Python's modular exponentiation.
+Run make -C test for automated GPIO and exhaustive-hash tests. See src/improvement_plan/fo_transform/README.md for Vivado commands and optional hash configurations.
 
 ## External hardware
 
-An STM32 or another GPIO host supplies the input chunks, LOAD, START,
-reset, and clock, then reads DONE and the result pages. Connect a common
-ground and use logic levels compatible with the Tiny Tapeout carrier.
+An STM32 supplies the clock, reset, and key/input packets. Hashing is on-chip.
