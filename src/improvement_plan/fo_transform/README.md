@@ -202,7 +202,14 @@ with the compact hash on chip. The
 passed the exhaustive hash and all RTL jobs and lowered placement utilization
 to **95.105%**. Global placement proceeded, but detailed placement failed
 with `DPL-0036`; the 1x1 physical build is still incomplete.
-The next revision removes duplicate RSA operand banks and uses two-bit
-arithmetic to leave more placement margin; its physical result is recorded below
-when available.
+The [area-optimized revision](https://github.com/crankyjoke/ECE298A/actions/runs/44666711905)
+removes duplicate RSA operand banks and uses two-bit arithmetic. It completed
+the **1x1 GF180 GDS build and physical precheck**, at **76.468% placement
+utilization**. The initial gate-test attempt found a testbench power-net wiring
+error; the harness was corrected without changing hardware. See the
+[verification rerun](https://github.com/crankyjoke/ECE298A/actions/runs/44668181221).
+That rerun **passed all eight jobs**, including the 1x1 physical build,
+physical precheck, and **21 gate-level GPIO cases**.
+Setup and hold checks passed, but nonfatal maximum-slew warnings remain at
+some corners; physical fit is not a claim of unrestricted signoff readiness.
 See VALIDATION.md for current measurements and historical results.

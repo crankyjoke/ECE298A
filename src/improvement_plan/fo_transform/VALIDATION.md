@@ -38,7 +38,35 @@ reported:
 | 7 | 320 | 249 |
 
 The two-bit choice trades more cycles for area, while keeping the public
-exponent programmable. A new 1x1 GF180 run tests placement/routing next.
+exponent programmable.
+
+The [optimized GF180 run](https://github.com/crankyjoke/ECE298A/actions/runs/44666711905)
+passed all RTL jobs, the exhaustive hash test, the **1x1 GDS physical build**,
+and **physical precheck**. Initial cell area was 35,902.496 square micrometres
+in 51,966.970 square micrometres of core (69.1% initial utilization). Placement's
+pin-density adjustment yielded **76.468% utilization**, down from 95.105%.
+Placement, routing, Magic DRC, Netgen LVS, and antenna checks completed.
+The flow reported zero setup and hold violations across its analyzed corners
+at the configured 100 ns clock. KLayout DRC was skipped by the standard config.
+
+The first netlist-test attempt stopped at elaboration because the testbench
+connected literals to bidirectional power pins. The harness now uses supply
+nets. This did not change the hardware; the
+[corrected verification run](https://github.com/crankyjoke/ECE298A/actions/runs/44668181221)
+finished **successfully across all eight jobs**: 304 FO RTL cases across its
+eight configurations, 80 SHA-block checks, the 16,513-case exhaustive hash
+regression, the repeated 1x1 GDS build, physical precheck, and **21 gate-level
+GPIO cases**, including
+encryption, invalid-header/key inputs, pauses, output paging, reset, and repeated
+transactions. The gate test uses the generated GF180 netlist and cell models
+with power nets and a slow functional clock; it does not replace timing analysis.
+
+Remaining timing caveat: the flow completed with nonfatal maximum-slew
+warnings. Its final metrics report a worst-corner count of 420 at
+`max_ss_125C_3v00` (318 at `nom_ss_125C_3v00`, 257 at `min_ss_125C_3v00`,
+and 11 at `max_tt_025C_3v30`; zero in the other analyzed corners).
+These counts are corner-specific and must not be added as unique nets.
+Fit and successful setup/hold checks do not eliminate this signoff caveat.
 
 ## Previous encryption-only profile
 
